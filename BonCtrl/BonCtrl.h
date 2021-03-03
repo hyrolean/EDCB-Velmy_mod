@@ -382,7 +382,7 @@ public:
 		BYTE pfOnlyFlag,
 		EPGDB_EVENT_INFO* epgInfo
 		);
-	
+
 	//PC時計を元としたストリーム時間との差を取得する
 	//戻り値：
 	// 差の秒数
@@ -556,7 +556,8 @@ protected:
 	DWORD _SetCh(
 		DWORD space,
 		DWORD ch,
-		BOOL chScan = FALSE
+		BOOL chScan = FALSE,
+		BOOL fast = FALSE
 		);
 
 	void GetEpgDataFilePath(WORD ONID, WORD TSID, wstring& epgDataFilePath);

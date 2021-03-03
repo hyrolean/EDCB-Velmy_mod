@@ -11,7 +11,7 @@ CBonDriverUtil::CBonDriverUtil(void)
 	this->bonDriverFolderPath = L"";
 	GetModuleFolderPath(this->bonDriverFolderPath);
 	this->bonDriverFolderPath += BON_DLL_FOLDER;
-	
+
 	this->loadIndex = -1;
 	this->loadTunerName = L"";
 	this->initChSetFlag = FALSE;
@@ -43,7 +43,7 @@ BOOL CBonDriverUtil::Lock(LPCWSTR log, DWORD timeOut)
 		OutputDebugString(log);
 	}
 	DWORD dwRet = WaitForSingleObject(this->lockEvent, timeOut);
-	if( dwRet == WAIT_ABANDONED || 
+	if( dwRet == WAIT_ABANDONED ||
 		dwRet == WAIT_FAILED){
 		return FALSE;
 	}
@@ -167,7 +167,7 @@ DWORD CBonDriverUtil::OpenBonDriver(
 {
 	if( Lock() == FALSE ) return ERR_OPEN_TUNER;
 	DWORD err = ERR_OPEN_TUNER;
-	
+
 	map<int, BON_DRIVER_INFO>::iterator itrF;
 	itrF = this->bonDllMap.find(index);
 	if( itrF != this->bonDllMap.end() ){
@@ -179,7 +179,7 @@ DWORD CBonDriverUtil::OpenBonDriver(
 		_OutputDebugString(L"★OpenするBonDriverが見つかりません");
 		err = ERR_FIND_TUNER;
 	}
-	
+
 	UnLock();
 	return err;
 }
@@ -394,9 +394,11 @@ wstring CBonDriverUtil::GetTunerName()
 //引数：
 // space			[IN]変更チャンネルのSpace
 // ch				[IN]変更チャンネルの物理Ch
+// fast				[IN]高速チャンネル変更モード
 DWORD CBonDriverUtil::SetCh(
 	DWORD space,
-	DWORD ch
+	DWORD ch,
+	BOOL fast
 	)
 {
 	if( Lock() == FALSE ) return FALSE;
@@ -417,8 +419,8 @@ DWORD CBonDriverUtil::SetCh(
 		}
 	}
 	if( this->bon2IF->SetChannel(space, ch) == FALSE ){
-		Sleep(500);
-		if( this->bon2IF->SetChannel(space, ch) == FALSE ){
+		if(!fast) Sleep(500);
+		if(fast || this->bon2IF->SetChannel(space, ch) == FALSE ){
 			UnLock();
 			return ERR_FALSE;
 		}

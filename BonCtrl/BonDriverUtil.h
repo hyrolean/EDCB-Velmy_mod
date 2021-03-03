@@ -83,9 +83,11 @@ public:
 	//引数：
 	// space			[IN]変更チャンネルのSpace
 	// ch				[IN]変更チャンネルの物理Ch
+	// fast				[IN]高速チャンネル変更モード
 	DWORD SetCh(
 		DWORD space,
-		DWORD ch
+		DWORD ch,
+		BOOL fast = FALSE
 		);
 
 	//現在のチャンネル取得

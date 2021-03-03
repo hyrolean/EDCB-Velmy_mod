@@ -116,7 +116,7 @@ CBonCtrl::~CBonCtrl(void)
 		CloseHandle(this->recvStopEvent);
 		this->recvStopEvent = NULL;
 	}
-	
+
 	if( this->lockEvent != NULL ){
 		UnLock();
 		CloseHandle(this->lockEvent);
@@ -137,7 +137,7 @@ BOOL CBonCtrl::Lock(LPCWSTR log, DWORD timeOut)
 	//	OutputDebugString(log);
 	//}
 	DWORD dwRet = WaitForSingleObject(this->lockEvent, timeOut);
-	if( dwRet == WAIT_ABANDONED || 
+	if( dwRet == WAIT_ABANDONED ||
 		dwRet == WAIT_FAILED ||
 		dwRet == WAIT_TIMEOUT){
 			if( log != NULL ){
@@ -424,7 +424,8 @@ DWORD CBonCtrl::SetCh(
 DWORD CBonCtrl::_SetCh(
 	DWORD space,
 	DWORD ch,
-	BOOL chScan
+	BOOL chScan,
+	BOOL fast
 	)
 {
 	DWORD spaceNow=0;
@@ -436,7 +437,7 @@ DWORD CBonCtrl::_SetCh(
 		if( space != spaceNow || ch != chNow ){
 			this->tsOut.SetChChangeEvent(chScan);
 			_OutputDebugString(L"SetCh space %d, ch %d", space, ch);
-			ret = this->bonUtil.SetCh(space, ch);
+			ret = this->bonUtil.SetCh(space, ch, fast);
 
 			StartBackgroundEpgCap();
 		}else{
@@ -446,7 +447,7 @@ DWORD CBonCtrl::_SetCh(
 					//エラーの時は再設定
 					this->tsOut.SetChChangeEvent();
 					_OutputDebugString(L"SetCh space %d, ch %d", space, ch);
-					ret = this->bonUtil.SetCh(space, ch);
+					ret = this->bonUtil.SetCh(space, ch, fast);
 
 					StartBackgroundEpgCap();
 				}
@@ -455,7 +456,7 @@ DWORD CBonCtrl::_SetCh(
 					//エラーの時は再設定
 					this->tsOut.SetChChangeEvent();
 					_OutputDebugString(L"SetCh space %d, ch %d", space, ch);
-					ret = this->bonUtil.SetCh(space, ch);
+					ret = this->bonUtil.SetCh(space, ch, fast);
 
 					StartBackgroundEpgCap();
 				}
@@ -1250,7 +1251,7 @@ UINT WINAPI CBonCtrl::ChScanThread(LPVOID param)
 
 	DWORD chChgTimeOut = GetPrivateProfileInt(L"CHSCAN", L"ChChgTimeOut", 9, iniPath.c_str());
 	DWORD serviceChkTimeOut = GetPrivateProfileInt(L"CHSCAN", L"ServiceChkTimeOut", 8, iniPath.c_str());
-
+    BOOL  bFastScan = GetPrivateProfileInt(L"CHSCAN", L"FastScan", FALSE, iniPath.c_str());
 
 	DWORD wait = 0;
 	BOOL chkNext = TRUE;
@@ -1269,14 +1270,21 @@ UINT WINAPI CBonCtrl::ChScanThread(LPVOID param)
 			sys->chSt_space = chkList[chkCount].space;
 			sys->chSt_ch = chkList[chkCount].ch;
 			sys->chSt_chName = chkList[chkCount].chName;
-			sys->_SetCh(chkList[chkCount].space, chkList[chkCount].ch, TRUE);
+			bool done = sys->_SetCh(chkList[chkCount].space, chkList[chkCount].ch, TRUE, bFastScan) == NO_ERR;
 			if( firstChg == FALSE ){
 				firstChg = TRUE;
 				sys->tsOut.ResetChChange();
 			}
 			startTime = GetTimeCount();
-			chkNext = FALSE;
-			wait = 1000;
+			if(bFastScan && !done) {
+				// MARK: FastScan
+				OutputDebugString(L"★AutoScan FastScan Ch skipped\r\n");
+				wait = 100;
+			}
+			else {
+				chkNext = FALSE;
+				wait = 1000;
+			}
 			chkWait = chChgTimeOut;
 		}else{
 			BOOL chChgErr = FALSE;
@@ -1312,16 +1320,16 @@ UINT WINAPI CBonCtrl::ChScanThread(LPVOID param)
 					}
 				}
 			}
-			if( chkNext == TRUE ){
-				//次のチャンネルへ
-				chkCount++;
-				sys->chSt_chkNum++;
-				if( sys->chSt_totalNum <= chkCount ){
-					//全部チェック終わったので終了
-					sys->chSt_err = ST_COMPLETE;
-					sys->chUtil.SaveChSet(chSet4, chSet5);
-					break;
-				}
+		}
+		if( chkNext == TRUE ){
+			//次のチャンネルへ
+			chkCount++;
+			sys->chSt_chkNum++;
+			if( sys->chSt_totalNum <= chkCount ){
+				//全部チェック終わったので終了
+				sys->chSt_err = ST_COMPLETE;
+				sys->chUtil.SaveChSet(chSet4, chSet5);
+				break;
 			}
 		}
 	}
