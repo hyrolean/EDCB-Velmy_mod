@@ -514,6 +514,16 @@ BOOL CBatManager::CreateBatFile(BAT_WORK_INFO* info, wstring batSrcFilePath, wst
 		strAddKey.erase(strAddKey.length()-1, 1);
 	}
 
+	// % escapes
+	Replace(strRecFilePath,"%","%%");
+	Replace(strFolderPath,"%","%%");
+	Replace(strFileName,"%","%%");
+	Replace(strServiceName,"%","%%");
+	Replace(strTitle,"%","%%");
+	Replace(strTitleF,"%","%%");
+	Replace(strTitle2F,"%","%%");
+	Replace(strAddKey,"%","%%");
+        
 	Replace(strRead, "$FilePath$", strRecFilePath);
 	Replace(strRead, "$FolderPath$", strFolderPath);
 	Replace(strRead, "$FileName$", strFileName);
