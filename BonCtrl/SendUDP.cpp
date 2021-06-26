@@ -103,7 +103,7 @@ BOOL CSendUDP::StartUpload( vector<NW_SEND_INFO>* List )
 		}
 		SockList.push_back(Item);
 	}
-	
+
 	if( m_hSendThread == NULL ){
 		m_uiSendSize = GetPrivateProfileInt( L"Set", L"SendSize", 128, m_strIniPath.c_str() )*188;
 		//解析スレッド起動
@@ -206,7 +206,7 @@ UINT WINAPI CSendUDP::SendThread(LPVOID pParam)
 		if( pData != NULL && pSys->SockList.size() > 0 ){
 			dwSendSize = 0;
 
-			DWORD dwRead = 0;
+			DWORD dwRead = 0, totalSleep = 0;
 			while(dwRead < pData->size){
 				int iSendSize = 0;
 				if( dwRead+pSys->m_uiSendSize < pData->size ){
@@ -224,7 +224,19 @@ UINT WINAPI CSendUDP::SendThread(LPVOID pParam)
 						break;
 					}
 				}
-				Sleep(pSys->m_uiWait);
+				if(totalSleep<pSys->m_uiWait) {
+					auto dur = [](DWORD s=0, DWORD e=GetTickCount()) -> DWORD {
+						if(e>s) return e-s ;
+						return s + 0xFFFFFFFF-e + 1 ;
+					};
+					DWORD s = dur() ;
+					DWORD t = pSys->m_uiWait-totalSleep ;
+					Sleep(t);
+					DWORD elap = dur(s) ;
+					if(elap<t) totalSleep=0;
+					else totalSleep = elap-t;
+				}else
+					totalSleep-=pSys->m_uiWait;
 				dwRead+=iSendSize;
 			}
 		}
