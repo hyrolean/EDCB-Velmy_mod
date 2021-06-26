@@ -32,7 +32,7 @@ protected:
 	BYTE* nextStartBuff;
 	DWORD nextStartSize;
 
-	typedef enum TS_MODE{
+	enum TS_MODE{
 		TS_NONE = 0,
 		TS_188 = 188,
 		TS_192 = 192,

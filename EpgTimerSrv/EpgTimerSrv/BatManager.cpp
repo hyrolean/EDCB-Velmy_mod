@@ -55,7 +55,7 @@ BOOL CBatManager::Lock(LPCWSTR log, DWORD timeOut)
 	//	_OutputDebugString(L"Ÿ%s",log);
 	//}
 	DWORD dwRet = WaitForSingleObject(this->lockEvent, timeOut);
-	if( dwRet == WAIT_ABANDONED || 
+	if( dwRet == WAIT_ABANDONED ||
 		dwRet == WAIT_FAILED ||
 		dwRet == WAIT_TIMEOUT){
 			OutputDebugString(L"ŸCBatManager::Lock FALSE");
@@ -81,7 +81,7 @@ void CBatManager::ReloadSetting()
 {
 	if( Lock() == FALSE ) return ;
 
-	
+
 	UnLock();
 }
 /*
@@ -108,7 +108,7 @@ void CBatManager::AddBatWork(BAT_WORK_INFO* info)
 	if( Lock() == FALSE ) return ;
 
 	workList.push_back(*info);
-	
+
 	UnLock();
 }
 
@@ -117,7 +117,7 @@ DWORD CBatManager::GetWorkCount()
 	if( Lock() == FALSE ) return FALSE;
 
 	DWORD ret = (DWORD)workList.size();
-	
+
 	UnLock();
 
 	return ret;
@@ -128,7 +128,7 @@ BOOL CBatManager::IsWorking()
 	if( Lock() == FALSE ) return FALSE;
 
 	BOOL ret = this->workFlag;
-	
+
 	UnLock();
 
 	return ret;
@@ -514,7 +514,7 @@ BOOL CBatManager::CreateBatFile(BAT_WORK_INFO* info, wstring batSrcFilePath, wst
 		strAddKey.erase(strAddKey.length()-1, 1);
 	}
 
-	// % escapes
+	// MARK : % escapes
 	Replace(strRecFilePath,"%","%%");
 	Replace(strFolderPath,"%","%%");
 	Replace(strFileName,"%","%%");
@@ -523,7 +523,7 @@ BOOL CBatManager::CreateBatFile(BAT_WORK_INFO* info, wstring batSrcFilePath, wst
 	Replace(strTitleF,"%","%%");
 	Replace(strTitle2F,"%","%%");
 	Replace(strAddKey,"%","%%");
-        
+
 	Replace(strRead, "$FilePath$", strRecFilePath);
 	Replace(strRead, "$FolderPath$", strFolderPath);
 	Replace(strRead, "$FileName$", strFileName);

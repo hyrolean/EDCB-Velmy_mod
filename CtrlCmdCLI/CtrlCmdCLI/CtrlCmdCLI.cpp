@@ -1676,30 +1676,6 @@ UInt32 CtrlCmdUtil::SendChgManualAdd(
 }
 
 /// <summary>
-/// 指定ファイルを転送する
-/// </summary>
-/// <param name="val">[IN]ファイル名</param>
-/// <param name="resVal">[OUT]バイナリ</param>
-UInt32 CtrlCmdUtil::SendFileCopy(
-	String^ val,
-	[Runtime::InteropServices::Out]array<byte>^% resVal
-	)
-{
-	pin_ptr<const wchar_t> valPin = PtrToStringChars(val);
-	std::wstring _val(valPin);
-
-	DWORD resValSize = 0;
-	BYTE* _resVal = NULL;
-	DWORD ret = this->sendCmd->SendFileCopy(_val, &_resVal, &resValSize);
-	if( ret == CMD_SUCCESS ){
-		resVal = gcnew array<byte>(resValSize);
-		System::Runtime::InteropServices::Marshal::Copy(IntPtr(_resVal), resVal, 0, resValSize);
-	}
-
-	return ret;
-}
-
-/// <summary>
 /// 番組情報一覧を取得する
 /// </summary>
 /// <param name="val">[OUT]番組情報一覧</param>

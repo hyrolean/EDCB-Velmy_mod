@@ -1,0 +1,57 @@
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Dummy files
+*.~*
+*.ec?
+*.BAT
+
+# VC++ files
+.vs/
+win32/
+x64/
+_intermediate_/
+*.user
+*.sdf
+*.VC.db
+*.aps
+
+# baseclasses files
+baseclasses/*.cpp
+baseclasses/*.h
+baseclasses/*.vcproj
+
+# EpgTimer obj files
+EpgTimer/EpgTimer/obj/
+EpgTimerNW/EpgTimerNW/obj/
+
