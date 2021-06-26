@@ -1,6 +1,8 @@
 #include "StdAfx.h"
 #include "SendUDP.h"
 #include <process.h>
+#include <MMSystem.h>
+#pragma comment(lib, "WinMM.lib")
 
 #define SEND_BUFF (188)
 
@@ -173,6 +175,19 @@ UINT WINAPI CSendUDP::SendThread(LPVOID pParam)
 
 	BYTE* pbSendBuff = new BYTE[pSys->m_uiSendSize];
 	DWORD dwSendSize = 0;
+
+	class mm_interval_lock {
+		DWORD period_;
+	public:
+		mm_interval_lock(DWORD period) : period_(period) {
+			timeBeginPeriod(period_);
+		}
+		~mm_interval_lock() {
+			timeEndPeriod(period_);
+		}
+	};
+
+	mm_interval_lock interlock(10);
 
 	while(1){
 		if( ::WaitForSingleObject(pSys->m_hSendStopEvent, 0) != WAIT_TIMEOUT ){
