@@ -185,6 +185,10 @@ UINT WINAPI CSendUDP::SendThread(LPVOID pParam)
 	BYTE* pbSendBuff = new BYTE[pSys->m_uiSendSize];
 	DWORD dwSendSize = 0;
 
+	auto dur = [](DWORD s=0, DWORD e=GetTickCount()) -> DWORD {
+		return (e>=s) ? e-s : s + 0xFFFFFFFF-e + 1 ;
+	};
+
 #if USE_MM_INTERVAL_LOCK
 	class mm_interval_lock {
 		DWORD period_;
@@ -220,9 +224,6 @@ UINT WINAPI CSendUDP::SendThread(LPVOID pParam)
 	DWORD totalSleep = 0;
 	auto doSleep = [&](UINT wait) {
 		if(totalSleep<wait) {
-			auto dur = [](DWORD s=0, DWORD e=GetTickCount()) -> DWORD {
-				return (e>=s) ? e-s : s + 0xFFFFFFFF-e + 1 ;
-			};
 			DWORD s = dur() ;
 			DWORD t = wait-totalSleep ;
 			Sleep(t);
@@ -274,17 +275,23 @@ UINT WINAPI CSendUDP::SendThread(LPVOID pParam)
 				}else{
 					iSendSize = pData->size-dwRead;
 				}
-				for( int i=0; i<(int)pSys->SockList.size(); i++ ){
 #if USE_SELECT_SEND
-					doSelectSend(pSys->SockList[i].sock, pSys->m_uiWait);
+				//DWORD s = dur(), e=s ;
+				for( int i=(int)pSys->SockList.size()-1; i>=0 ; i-- ){
+					//DWORD t = dur(s,e) ;
+					//if(t>=pSys->m_uiWait) break ;
+					doSelectSend(pSys->SockList[i].sock, pSys->m_uiWait/*-t*/);
+					//e = dur();
+				}
 #endif
+				for( int i=(int)pSys->SockList.size()-1; i>=0 ; i-- ){
 					if( sendto(pSys->SockList[i].sock, (char*)pData->data+dwRead, iSendSize, 0, (struct sockaddr *)&pSys->SockList[i].addr, sizeof(pSys->SockList[i].addr)) == 0){
 						closesocket(pSys->SockList[i].sock);
 						vector<SOCKET_DATA>::iterator itr;
 						itr = pSys->SockList.begin();
 						advance(itr, i);
 						pSys->SockList.erase(itr);
-						break;
+						//break;
 					}
 				}
 #if !USE_SELECT_SEND
