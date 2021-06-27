@@ -1,10 +1,19 @@
 #include "StdAfx.h"
 #include "SendUDP.h"
 #include <process.h>
+
+//マルチメディアタイマーを有効にして割込み精度を上げるかどうか(0:しない 1:する)
+#define USE_MM_INTERVAL_LOCK 0
+//パケット送信前に送信可能になるまでselectで待機させるかどうか(0:しない 1:する)
+#define USE_SELECT_SEND 1
+
+#if USE_MM_INTERVAL_LOCK
 #include <MMSystem.h>
 #pragma comment(lib, "WinMM.lib")
+#endif
 
 #define SEND_BUFF (188)
+
 
 CSendUDP::CSendUDP(void)
 {
@@ -176,6 +185,7 @@ UINT WINAPI CSendUDP::SendThread(LPVOID pParam)
 	BYTE* pbSendBuff = new BYTE[pSys->m_uiSendSize];
 	DWORD dwSendSize = 0;
 
+#if USE_MM_INTERVAL_LOCK
 	class mm_interval_lock {
 		DWORD period_;
 	public:
@@ -186,8 +196,43 @@ UINT WINAPI CSendUDP::SendThread(LPVOID pParam)
 			timeEndPeriod(period_);
 		}
 	};
-
 	mm_interval_lock interlock(10);
+#endif
+
+
+#if USE_SELECT_SEND
+	auto doSelectSend = [](int sock, UINT wait, bool *sendOk=nullptr, bool *excepted=nullptr) -> bool {
+		fd_set fdSend, fdExcept ;
+		ZeroMemory(&fdSend,sizeof fdSend) ;
+		FD_ZERO(&fdSend);
+		FD_SET(sock,&fdSend);
+		fdExcept = fdSend ;
+		timeval time_limit ;
+		time_limit.tv_sec = 0 ;
+		time_limit.tv_usec = wait*1000 ;
+		auto r=select(sock,NULL,&fdSend,&fdExcept,&time_limit) ;
+		if(sendOk) *sendOk = FD_ISSET(sock, &fdSend) ? true : false ;
+		if(excepted) *excepted = FD_ISSET(sock, &fdExcept) ? true : false ;
+		return r ;
+	};
+#endif
+
+	DWORD totalSleep = 0;
+	auto doSleep = [&](UINT wait) {
+		if(totalSleep<wait) {
+			auto dur = [](DWORD s=0, DWORD e=GetTickCount()) -> DWORD {
+				return (e>=s) ? e-s : s + 0xFFFFFFFF-e + 1 ;
+			};
+			DWORD s = dur() ;
+			DWORD t = wait-totalSleep ;
+			Sleep(t);
+			DWORD elap = dur(s) ;
+			if(elap<t) totalSleep=0;
+			else totalSleep = elap-t;
+		}else
+			totalSleep-=wait;
+	};
+
 
 	while(1){
 		if( ::WaitForSingleObject(pSys->m_hSendStopEvent, 0) != WAIT_TIMEOUT ){
@@ -221,7 +266,7 @@ UINT WINAPI CSendUDP::SendThread(LPVOID pParam)
 		if( pData != NULL && pSys->SockList.size() > 0 ){
 			dwSendSize = 0;
 
-			DWORD dwRead = 0, totalSleep = 0;
+			DWORD dwRead = 0 ;
 			while(dwRead < pData->size){
 				int iSendSize = 0;
 				if( dwRead+pSys->m_uiSendSize < pData->size ){
@@ -230,6 +275,9 @@ UINT WINAPI CSendUDP::SendThread(LPVOID pParam)
 					iSendSize = pData->size-dwRead;
 				}
 				for( int i=0; i<(int)pSys->SockList.size(); i++ ){
+#if USE_SELECT_SEND
+					doSelectSend(pSys->SockList[i].sock, pSys->m_uiWait);
+#endif
 					if( sendto(pSys->SockList[i].sock, (char*)pData->data+dwRead, iSendSize, 0, (struct sockaddr *)&pSys->SockList[i].addr, sizeof(pSys->SockList[i].addr)) == 0){
 						closesocket(pSys->SockList[i].sock);
 						vector<SOCKET_DATA>::iterator itr;
@@ -239,27 +287,19 @@ UINT WINAPI CSendUDP::SendThread(LPVOID pParam)
 						break;
 					}
 				}
-				if(totalSleep<pSys->m_uiWait) {
-					auto dur = [](DWORD s=0, DWORD e=GetTickCount()) -> DWORD {
-						if(e>s) return e-s ;
-						return s + 0xFFFFFFFF-e + 1 ;
-					};
-					DWORD s = dur() ;
-					DWORD t = pSys->m_uiWait-totalSleep ;
-					Sleep(t);
-					DWORD elap = dur(s) ;
-					if(elap<t) totalSleep=0;
-					else totalSleep = elap-t;
+#if !USE_SELECT_SEND
+				if(pSys->m_TSBuff.size()<390) {
+					doSleep(pSys->m_uiWait);
 				}else
-					totalSleep-=pSys->m_uiWait;
+					totalSleep=0;
+#endif
 				dwRead+=iSendSize;
 			}
+		}else if( pSys->m_TSBuff.empty() ){
+			doSleep(1);
 		}
 
 		SAFE_DELETE(pData);
-		if( (int)pSys->m_TSBuff.size() == 0 ){
-			Sleep(1);
-		}
 	}
 
 	SAFE_DELETE_ARRAY(pbSendBuff);
