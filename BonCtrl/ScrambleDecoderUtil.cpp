@@ -21,6 +21,9 @@ CScrambleDecoderUtil::~CScrambleDecoderUtil(void)
 BOOL CScrambleDecoderUtil::LoadDll(LPCWSTR dllPath)
 {
 	UnLoadDll();
+#ifdef ES_PREVIEW
+	return FALSE;
+#else
 	BOOL ret = TRUE;
 
 	this->module = ::LoadLibrary(dllPath);
@@ -58,6 +61,7 @@ ERR_END:
 	}
 
 	return ret;
+#endif
 }
 
 void CScrambleDecoderUtil::UnLoadDll()

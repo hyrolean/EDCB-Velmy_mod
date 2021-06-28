@@ -56,6 +56,11 @@ BOOL CSetDlgApp::OnInitDialog()
 
 	// TODO:  Ç±Ç±Ç…èâä˙âªÇí«â¡ÇµÇƒÇ≠ÇæÇ≥Ç¢
 
+#ifdef ES_PREVIEW
+	btnEnableScramble.ShowWindow(SW_HIDE);
+	btnEnableEMM.ShowWindow(SW_HIDE);
+#endif
+
 	btnAllService.SetCheck( GetPrivateProfileInt( L"SET", L"AllService", 0, appIniPath ) );
 	btnEnableScramble.SetCheck( GetPrivateProfileInt( L"SET", L"Scramble", 1, appIniPath ) );
 	btnEnableEMM.SetCheck( GetPrivateProfileInt( L"SET", L"EMM", 0, appIniPath ) );
@@ -65,7 +70,7 @@ BOOL CSetDlgApp::OnInitDialog()
 	startMargine = GetPrivateProfileInt( L"SET", L"StartMargine", 5, appIniPath );
 	endMargine = GetPrivateProfileInt( L"SET", L"EndMargine", 5, appIniPath );
 	btnOverWrite.SetCheck( GetPrivateProfileInt( L"SET", L"OverWrite", 0, appIniPath ) );
-	
+
 	btnEpgCapLive.SetCheck( GetPrivateProfileInt( L"SET", L"EpgCapLive", 1, appIniPath ) );
 	btnEpgCapRec.SetCheck( GetPrivateProfileInt( L"SET", L"EpgCapRec", 1, appIniPath ) );
 	btnTaskMin.SetCheck( GetPrivateProfileInt( L"SET", L"MinTask", 0, appIniPath ) );
