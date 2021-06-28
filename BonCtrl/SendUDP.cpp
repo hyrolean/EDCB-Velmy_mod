@@ -275,10 +275,12 @@ UINT WINAPI CSendUDP::SendThread(LPVOID pParam)
 				}else{
 					iSendSize = pData->size-dwRead;
 				}
-				for( int i=(int)pSys->SockList.size()-1; i>=0 ; i-- ){
 #if USE_SELECT_SEND
+				for( int i=(int)pSys->SockList.size()-1; i>=0 ; i-- ){
 					doSelectSend(pSys->SockList[i].sock, pSys->m_uiWait);
+				}
 #endif
+				for( int i=(int)pSys->SockList.size()-1; i>=0 ; i-- ){
 					if( sendto(pSys->SockList[i].sock, (char*)pData->data+dwRead, iSendSize, 0, (struct sockaddr *)&pSys->SockList[i].addr, sizeof(pSys->SockList[i].addr)) == 0){
 						closesocket(pSys->SockList[i].sock);
 						vector<SOCKET_DATA>::iterator itr;
