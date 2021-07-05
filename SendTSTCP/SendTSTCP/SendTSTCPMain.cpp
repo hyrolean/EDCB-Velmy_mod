@@ -372,16 +372,17 @@ UINT WINAPI CSendTSTCPMain::SendThread(LPVOID pParam)
 
 			map<wstring, SEND_INFO>::iterator itr;
 			for( itr = pSys->m_SendList.begin(); itr != pSys->m_SendList.end(); itr++){
-				if( itr->second.bConnect == TRUE ){
-					if( sendto(itr->second.sock, 
+				if( itr->second.bConnect == TRUE && dwSend>0 ){
+					int r = sendto(itr->second.sock,
 						(char*)pbSend,
 						dwSend,
 						0,
 						(struct sockaddr *)&itr->second.addr,
 						sizeof(itr->second.addr)
-						) == INVALID_SOCKET){
+						);
+					if(r == SOCKET_ERROR || r < (int)dwSend){
 							closesocket(itr->second.sock);
-							itr->second.sock = NULL;
+							itr->second.sock = INVALID_SOCKET;
 							itr->second.bConnect = FALSE;
 					}
 					dwCount++;
