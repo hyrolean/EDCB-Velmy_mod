@@ -58,8 +58,8 @@ DWORD GetNextID()
 //戻り値
 // TRUE（成功）、FALSE（失敗）
 //引数：
-// name						[OUT]名称
-// nameSize					[IN/OUT]nameのサイズ(WCHAR単位)
+// name                     [OUT]名称
+// nameSize                 [IN/OUT]nameのサイズ(WCHAR単位)
 BOOL WINAPI GetPlugInName(
 	WCHAR* name,
 	DWORD* nameSize
@@ -88,7 +88,7 @@ BOOL WINAPI GetPlugInName(
 
 //PlugInで設定が必要な場合、設定用のダイアログなどを表示する
 //引数：
-// parentWnd				[IN]親ウインドウ
+// parentWnd                [IN]親ウインドウ
 void WINAPI Setting(
 	HWND parentWnd
 	)
@@ -99,16 +99,25 @@ void WINAPI Setting(
 	wstring iniPath = dllPath;
 	iniPath += L".ini";
 
-	WCHAR buff[1024] = L"";
-	GetPrivateProfileString(L"SET", L"Size", L"770048", buff, 1024, iniPath.c_str());
-
 	CSettingDlg dlg;
+
+	WCHAR sizeStr[32] = L"", packetStr[32] = L"";
+	swprintf(sizeStr, 32, L"%d", DEFAULT_BUFFER_SIZE);
+	swprintf(packetStr, 32, L"%d", DEFAULT_BUFFER_PACKET);
+
+	WCHAR buff[1024] = L"";
+	GetPrivateProfileString(L"SET", L"Size", sizeStr, buff, 1024, iniPath.c_str());
 	dlg.size = buff;
+
+	GetPrivateProfileString(L"SET", L"Packet", packetStr, buff, 1024, iniPath.c_str());
+	dlg.packet = buff;
+
 	if( dlg.CreateSettingDialog(g_instance, parentWnd) == IDOK ){
 		WritePrivateProfileString(L"SET", L"Size", dlg.size.c_str(), iniPath.c_str());
+		WritePrivateProfileString(L"SET", L"Packet", dlg.packet.c_str(), iniPath.c_str());
 	}
 
-//	MessageBox(parentWnd, PLUGIN_NAME, L"Write PlugIn", MB_OK);
+//  MessageBox(parentWnd, PLUGIN_NAME, L"Write PlugIn", MB_OK);
 }
 
 //複数保存対応のためインスタンスを新規に作成する
@@ -116,7 +125,7 @@ void WINAPI Setting(
 //戻り値
 // TRUE（成功）、FALSE（失敗）
 //引数：
-// id				[OUT]識別ID
+// id               [OUT]識別ID
 BOOL WINAPI CreateCtrl(
 	DWORD* id
 	)
@@ -136,7 +145,7 @@ BOOL WINAPI CreateCtrl(
 //戻り値
 // TRUE（成功）、FALSE（失敗）
 //引数：
-// id				[IN]識別ID
+// id               [IN]識別ID
 BOOL WINAPI DeleteCtrl(
 	DWORD id
 	)
@@ -158,10 +167,10 @@ BOOL WINAPI DeleteCtrl(
 //戻り値：
 // TRUE（成功）、FALSE（失敗）
 //引数：
-// id					[IN]識別ID
-// fileName				[IN]保存ファイルフルパス（必要に応じて拡張子変えたりなど行う）
-// overWriteFlag		[IN]同一ファイル名存在時に上書きするかどうか（TRUE：する、FALSE：しない）
-// createSize			[IN]入力予想容量（188バイトTSでの容量。即時録画時など総時間未定の場合は0。延長などの可能性もあるので目安程度）
+// id                   [IN]識別ID
+// fileName             [IN]保存ファイルフルパス（必要に応じて拡張子変えたりなど行う）
+// overWriteFlag        [IN]同一ファイル名存在時に上書きするかどうか（TRUE：する、FALSE：しない）
+// createSize           [IN]入力予想容量（188バイトTSでの容量。即時録画時など総時間未定の場合は0。延長などの可能性もあるので目安程度）
 BOOL WINAPI StartSave(
 	DWORD id,
 	LPCWSTR fileName,
@@ -182,7 +191,7 @@ BOOL WINAPI StartSave(
 //戻り値：
 // TRUE（成功）、FALSE（失敗）
 //引数：
-// id					[IN]識別ID
+// id                   [IN]識別ID
 BOOL WINAPI StopSave(
 	DWORD id
 	)
@@ -202,9 +211,9 @@ BOOL WINAPI StopSave(
 //戻り値：
 // TRUE（成功）、FALSE（失敗）
 //引数：
-// id					[IN]識別ID
-// filePath				[OUT]保存ファイルフルパス
-// filePathSize			[IN/OUT]filePathのサイズ(WCHAR単位)
+// id                   [IN]識別ID
+// filePath             [OUT]保存ファイルフルパス
+// filePathSize         [IN/OUT]filePathのサイズ(WCHAR単位)
 BOOL WINAPI GetSaveFilePath(
 	DWORD id,
 	WCHAR* filePath,
@@ -226,10 +235,10 @@ BOOL WINAPI GetSaveFilePath(
 //戻り値：
 // TRUE（成功）、FALSE（失敗）
 //引数：
-// id					[IN]識別ID
-// data					[IN]TSデータ
-// size					[IN]dataのサイズ
-// writeSize			[OUT]保存に利用したサイズ
+// id                   [IN]識別ID
+// data                 [IN]TSデータ
+// size                 [IN]dataのサイズ
+// writeSize            [OUT]保存に利用したサイズ
 BOOL WINAPI AddTSBuff(
 	DWORD id,
 	BYTE* data,

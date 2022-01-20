@@ -13,6 +13,7 @@ public:
 
 public:
 	wstring size;
+    wstring packet;
 
 protected:
 	static LRESULT CALLBACK DlgProc(HWND hDlgWnd, UINT msg, WPARAM wp, LPARAM lp);
