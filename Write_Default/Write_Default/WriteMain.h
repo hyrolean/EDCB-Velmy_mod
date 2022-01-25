@@ -67,7 +67,7 @@ public:
 		DWORD* writeSize
 		);
 
-protected: // MPWM (Massive Packet Writing Moderator) MOD Fixed by hyrolean
+protected: // MPWM (Massive Packet Writing Moderator) MOD2 Fixed by hyrolean
 	class PACKET {
 		BYTE *data_;
 		size_t size_;
@@ -111,7 +111,11 @@ protected: // MPWM (Massive Packet Writing Moderator) MOD Fixed by hyrolean
 protected:
 	HANDLE file;
 	wstring savePath;
+	BOOL doReserve;
 	ULONGLONG reserveSize;
+	ULONGLONG writerWritten;
+	int writerPriority;
+    BOOL doFlush;
 
 	size_t bufferSize;
 	size_t maxPackets;

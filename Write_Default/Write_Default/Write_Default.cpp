@@ -93,28 +93,28 @@ void WINAPI Setting(
 	HWND parentWnd
 	)
 {
-	WCHAR dllPath[512] = L"";
-	GetModuleFileName(g_instance, dllPath, 512);
+	WCHAR dllPath[MAX_PATH] = L"";
+	GetModuleFileName(g_instance, dllPath, MAX_PATH);
 
 	wstring iniPath = dllPath;
 	iniPath += L".ini";
 
 	CSettingDlg dlg;
 
-	WCHAR sizeStr[32] = L"", packetStr[32] = L"";
-	swprintf(sizeStr, 32, L"%d", DEFAULT_BUFFER_SIZE);
-	swprintf(packetStr, 32, L"%d", DEFAULT_BUFFER_PACKET);
+	auto itos = [](int i) { wstring s; Format(s,L"%d",i); return s; };
 
-	WCHAR buff[1024] = L"";
-	GetPrivateProfileString(L"SET", L"Size", sizeStr, buff, 1024, iniPath.c_str());
-	dlg.size = buff;
-
-	GetPrivateProfileString(L"SET", L"Packet", packetStr, buff, 1024, iniPath.c_str());
-	dlg.packet = buff;
+	dlg.size = itos(GetPrivateProfileInt(L"SET", L"Size", DEFAULT_BUFFER_SIZE, iniPath.c_str()));
+	dlg.packet = itos(GetPrivateProfileInt(L"SET", L"Packet", DEFAULT_BUFFER_PACKET, iniPath.c_str()));
+	dlg.reserve = GetPrivateProfileInt(L"SET", L"Reserve", 1, iniPath.c_str()) ? true : false ;
+	dlg.priority = GetPrivateProfileInt(L"SET", L"Priority", 0, iniPath.c_str()) ;
+	dlg.flush = GetPrivateProfileInt(L"SET", L"Flush", 0, iniPath.c_str()) ? true : false ;
 
 	if( dlg.CreateSettingDialog(g_instance, parentWnd) == IDOK ){
 		WritePrivateProfileString(L"SET", L"Size", dlg.size.c_str(), iniPath.c_str());
 		WritePrivateProfileString(L"SET", L"Packet", dlg.packet.c_str(), iniPath.c_str());
+		WritePrivateProfileString(L"SET", L"Reserve", itos(dlg.reserve).c_str(), iniPath.c_str());
+		WritePrivateProfileString(L"SET", L"Priority", itos(dlg.priority).c_str(), iniPath.c_str());
+		WritePrivateProfileString(L"SET", L"Flush", itos(dlg.flush).c_str(), iniPath.c_str());
 	}
 
 //  MessageBox(parentWnd, PLUGIN_NAME, L"Write PlugIn", MB_OK);
