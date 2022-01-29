@@ -15,6 +15,7 @@ public:
 	wstring size;
 	wstring packet;
 	bool flush;
+	bool shrink;
 	bool reserve;
 	int priority;
 

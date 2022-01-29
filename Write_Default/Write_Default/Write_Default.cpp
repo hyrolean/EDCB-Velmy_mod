@@ -108,6 +108,7 @@ void WINAPI Setting(
 	dlg.reserve = GetPrivateProfileInt(L"SET", L"Reserve", 1, iniPath.c_str()) ? true : false ;
 	dlg.priority = GetPrivateProfileInt(L"SET", L"Priority", 0, iniPath.c_str()) ;
 	dlg.flush = GetPrivateProfileInt(L"SET", L"Flush", 0, iniPath.c_str()) ? true : false ;
+    dlg.shrink = GetPrivateProfileInt(L"SET", L"Shrink", 0, iniPath.c_str()) ? true : false ;
 
 	if( dlg.CreateSettingDialog(g_instance, parentWnd) == IDOK ){
 		WritePrivateProfileString(L"SET", L"Size", dlg.size.c_str(), iniPath.c_str());
@@ -115,6 +116,7 @@ void WINAPI Setting(
 		WritePrivateProfileString(L"SET", L"Reserve", itos(dlg.reserve).c_str(), iniPath.c_str());
 		WritePrivateProfileString(L"SET", L"Priority", itos(dlg.priority).c_str(), iniPath.c_str());
 		WritePrivateProfileString(L"SET", L"Flush", itos(dlg.flush).c_str(), iniPath.c_str());
+		WritePrivateProfileString(L"SET", L"Shrink", itos(dlg.shrink).c_str(), iniPath.c_str());
 	}
 
 //  MessageBox(parentWnd, PLUGIN_NAME, L"Write PlugIn", MB_OK);

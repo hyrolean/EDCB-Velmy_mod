@@ -25,18 +25,18 @@ LANGUAGE LANG_JAPANESE, SUBLANG_DEFAULT
 // TEXTINCLUDE
 //
 
-1 TEXTINCLUDE 
+1 TEXTINCLUDE
 BEGIN
     "resource.h\0"
 END
 
-2 TEXTINCLUDE 
+2 TEXTINCLUDE
 BEGIN
     "#include ""afxres.h""\r\n"
     "\0"
 END
 
-3 TEXTINCLUDE 
+3 TEXTINCLUDE
 BEGIN
     "\r\n"
     "\0"
@@ -67,7 +67,7 @@ BEGIN
     BEGIN
         BLOCK "041104b0"
         BEGIN
-            VALUE "FileDescription", "Write_Default (MPWM MOD2)"
+            VALUE "FileDescription", "Write_Default (MPWM MOD2+)"
             VALUE "FileVersion", "0.10.48.0"
             VALUE "InternalName", "Write_Default.dll"
             VALUE "LegalCopyright", "りょうちん Copyright (C) 2010, MOD by hyrolean"
@@ -88,23 +88,24 @@ END
 // Dialog
 //
 
-IDD_DIALOG_SET DIALOGEX 0, 0, 203, 119
+IDD_DIALOG_SET DIALOGEX 0, 0, 203, 134
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "設定"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,85,98,50,14
-    PUSHBUTTON      "キャンセル",IDCANCEL,146,98,50,14
+    DEFPUSHBUTTON   "OK",IDOK,85,113,50,14
+    PUSHBUTTON      "キャンセル",IDCANCEL,146,113,50,14
     LTEXT           "書き込みバッファサイズ",IDC_STATIC,7,9,71,8
     EDITTEXT        IDC_EDIT_SIZE,87,7,77,14,ES_AUTOHSCROLL
     LTEXT           "bytes",IDC_STATIC,169,9,19,8
     LTEXT           "書き込みバッファパケット",IDC_STATIC,7,28,74,8
     EDITTEXT        IDC_EDIT_PACKET,87,26,77,14,ES_AUTOHSCROLL
     LTEXT           "packets",IDC_STATIC,169,28,26,8
-    CONTROL         "書き込みを始める前に予めディスク領域を確保する",IDC_CHECK_RESERVE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,15,48,171,10
-    CONTROL         "書き込みスレッドの処理を他の処理より優先させる",IDC_CHECK_PRIORITY,"Button",BS_AUTO3STATE | WS_TABSTOP,15,63,171,10
+    CONTROL         "書き込みを始める前に予めディスク領域を確保する",IDC_CHECK_RESERVE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,15,48,173,10
+    CONTROL         "書き込みスレッドの処理を他の処理より優先させる",IDC_CHECK_PRIORITY,"Button",BS_AUTO3STATE | WS_TABSTOP,15,63,173,10
     CONTROL         "書き込みパケット毎にファイルバッファをフラッシュする",IDC_CHECK_FLUSHBUFFERS,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,15,78,171,10
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,15,78,173,10
+    CONTROL         "書き込みバッファに未使用の空きができたら開放する",IDC_CHECK_SHRINK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,15,93,174,10
 END
 
 
@@ -121,7 +122,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 196
         TOPMARGIN, 7
-        BOTTOMMARGIN, 112
+        BOTTOMMARGIN, 127
     END
 END
 #endif    // APSTUDIO_INVOKED

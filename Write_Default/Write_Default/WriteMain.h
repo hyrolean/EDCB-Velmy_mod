@@ -67,37 +67,48 @@ public:
 		DWORD* writeSize
 		);
 
-protected: // MPWM (Massive Packet Writing Moderator) MOD2 Fixed by hyrolean
+protected: // MPWM (Massive Packet Writing Moderator) MOD2+ Fixed by hyrolean
 	class PACKET {
 		BYTE *data_;
 		size_t size_;
 		size_t wrote_;
+		BYTE *alloc() {
+			if(data_==nullptr&&size_>0) data_ = new BYTE[size_], wrote_=0;
+			return data_;
+		}
 	public:
-		PACKET(size_t packet_size) {
-			data_ = new BYTE[packet_size];
-			size_ = packet_size;
-			wrote_ = 0;
+		PACKET(size_t packet_size) : data_(nullptr), wrote_(0), size_(packet_size) {
+			if(size_>0) alloc();
 		}
 		~PACKET() {
-			delete [] data_ ;
+			dispose() ;
 		}
 		size_t write(BYTE *buffer, size_t buffer_size) {
-			if(wrote_>=size_) return 0;
+			alloc();
+			if(wrote_ >= size_) return 0;
 			size_t w = min(buffer_size , size_ - wrote_);
 			memcpy(&data_[wrote_], buffer, w);
 			wrote_ += w ;
 			return w;
 		}
 		void clear() { wrote_ = 0 ; }
-		BYTE *data() { return data_; }
+		BYTE *data() { return alloc(); }
 		size_t size() { return size_; }
 		size_t wrote() { return wrote_; }
+		bool allocated() { return data_!=nullptr; }
 		bool full() { return wrote_ >= size_ ; }
+		void dispose() {
+			if(data_!=nullptr) {
+				delete [] data_ ;
+				data_=nullptr;
+			}
+			wrote_=0;
+		}
 	};
 	vector< shared_ptr<PACKET> > packets ;
-	vector<int> emptyIndices;
+	deque<int> emptyIndices;
 	deque<int> queueIndices;
-	int pushingIndex;
+	int pushingIndex, numAlloc;
 
 	HANDLE writerThread;
 	HANDLE pusherEvent, writerEvent;
@@ -115,7 +126,8 @@ protected:
 	ULONGLONG reserveSize;
 	ULONGLONG writerWritten;
 	int writerPriority;
-    BOOL doFlush;
+	BOOL doFlush;
+	BOOL doShrink;
 
 	size_t bufferSize;
 	size_t maxPackets;

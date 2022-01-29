@@ -36,8 +36,10 @@ CWriteMain::CWriteMain(void)
 	doReserve = GetPrivateProfileIntW(L"SET", L"Reserve", 1, iniPath.c_str() ) ? TRUE : FALSE ;
 	writerPriority = GetPrivateProfileIntW(L"SET", L"Priority", 0, iniPath.c_str() ) ;
 	doFlush = GetPrivateProfileIntW(L"SET", L"Flush", 0, iniPath.c_str() ) ? TRUE : FALSE ;
+	doShrink = GetPrivateProfileIntW(L"SET", L"Shrink", 0, iniPath.c_str() ) ? TRUE : FALSE ;
 
-	for(int i=0;i<2;i++) { // 初期パケット登録 ( ダブルバッファリング )
+	numAlloc=2;
+	for(int i=0;i<numAlloc;i++) { // 初期パケット登録 ( ダブルバッファリング )
 		packets.push_back(shared_ptr<PACKET>(new PACKET(bufferSize)));
 		emptyIndices.push_back(i);
 	}
@@ -282,6 +284,7 @@ BOOL CWriteMain::_AddTSBuff(
 						EnterCriticalSection(&critical);
 						packets.push_back(packet);
 						emptyIndices.push_back((int)packets.size()-1);
+						numAlloc++;
 					}else {
 						WaitForSingleObject(writerEvent,0);
 						empty = true;
@@ -298,8 +301,10 @@ BOOL CWriteMain::_AddTSBuff(
 				EnterCriticalSection(&critical);
 				if(!emptyIndices.empty()) {
 					pushingIndex=emptyIndices.back() ;
-					packets[pushingIndex]->clear();
 					emptyIndices.pop_back();
+					packets[pushingIndex]->clear();
+					if(packets[pushingIndex]->allocated())
+						numAlloc--;
 				}
 			}
 			LeaveCriticalSection(&critical);
@@ -367,8 +372,21 @@ BOOL CWriteMain::WriterWriteOnePacket()
 
 	EnterCriticalSection(&critical);
 	if(!writerFailed) {
+		bool beShrunk=false;
+		if(doShrink) {
+			//バッファ容量に余裕があれば領域を開放する
+			size_t numBorder = max(2,queueIndices.size()) ;
+			beShrunk = numAlloc>=numBorder;
+		}
 		//パケットを未使用に
-		emptyIndices.push_back(index);
+		if(beShrunk) {
+			packets[index]->dispose();
+			emptyIndices.push_front(index);
+		}
+		else {
+			emptyIndices.push_back(index);
+			numAlloc++;
+		}
 		SetEvent(writerEvent);
 	}else {
 		//パケットをキューにひとつ戻す

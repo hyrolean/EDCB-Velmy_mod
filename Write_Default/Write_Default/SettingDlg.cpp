@@ -28,10 +28,13 @@ LRESULT CALLBACK CSettingDlg::DlgProc(HWND hDlgWnd, UINT msg, WPARAM wp, LPARAM 
 			SetWindowLongPtr(hDlgWnd, GWLP_USERDATA, (LONG_PTR)this_);
 			SetDlgItemText(hDlgWnd, IDC_EDIT_SIZE, this_->size.c_str());
 			SetDlgItemText(hDlgWnd, IDC_EDIT_PACKET, this_->packet.c_str());
-			SendMessage(GetDlgItem(hDlgWnd, IDC_CHECK_FLUSHBUFFERS), BM_SETCHECK,
-				this_->flush?BST_CHECKED:BST_UNCHECKED, 0);
-			SendMessage(GetDlgItem(hDlgWnd, IDC_CHECK_RESERVE), BM_SETCHECK,
-				this_->reserve?BST_CHECKED:BST_UNCHECKED, 0);
+			auto setCheck = [&](int id, bool chk) {
+				SendMessage(GetDlgItem(hDlgWnd, id), BM_SETCHECK,
+					chk?BST_CHECKED:BST_UNCHECKED, 0);
+			};
+			setCheck(IDC_CHECK_FLUSHBUFFERS, this_->flush);
+			setCheck(IDC_CHECK_SHRINK, this_->shrink);
+			setCheck(IDC_CHECK_RESERVE, this_->reserve);
 			int pchk;
 			this_->triStatePriority = false;
 			switch(this_->priority) {
@@ -88,12 +91,16 @@ void CSettingDlg::DlgDecide(HWND hDlgWnd)
 		return wstring(buff);
 	};
 
+	auto getCheck = [&](int id) {
+		return SendMessage(GetDlgItem(hDlgWnd, id),
+			BM_GETCHECK, 0, 0) == BST_CHECKED ;
+	};
+
 	this_->size = getItemText(IDC_EDIT_SIZE);
 	this_->packet = getItemText(IDC_EDIT_PACKET);
-	this_->flush = SendMessage(GetDlgItem(hDlgWnd, IDC_CHECK_FLUSHBUFFERS),
-		BM_GETCHECK, 0, 0) == BST_CHECKED ;
-	this_->reserve = SendMessage(GetDlgItem(hDlgWnd, IDC_CHECK_RESERVE),
-		BM_GETCHECK, 0, 0) == BST_CHECKED ;
+	this_->flush = getCheck(IDC_CHECK_FLUSHBUFFERS);
+	this_->shrink = getCheck(IDC_CHECK_SHRINK);
+	this_->reserve = getCheck(IDC_CHECK_RESERVE);
 	int pchk = (int) SendMessage(GetDlgItem(hDlgWnd, IDC_CHECK_PRIORITY),
 		BM_GETCHECK, 0, 0) ;
 	switch(pchk) {

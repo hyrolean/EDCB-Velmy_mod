@@ -10,8 +10,9 @@
 #define IDC_CHECK_DORESERVE             1003
 #define IDC_CHECK_RESERVE               1003
 #define IDC_CHECK_PRIORITY              1004
-#define IDC_CHECK_PRIORITY2             1005
 #define IDC_CHECK_FLUSHBUFFERS          1005
+#define IDC_CHECK_FLUSHBUFFERS2         1006
+#define IDC_CHECK_SHRINK                1006
 
 // Next default values for new objects
 // 
