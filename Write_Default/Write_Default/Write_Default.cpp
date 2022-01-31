@@ -108,7 +108,7 @@ void WINAPI Setting(
 	dlg.reserve = GetPrivateProfileInt(L"SET", L"Reserve", 1, iniPath.c_str()) ? true : false ;
 	dlg.priority = GetPrivateProfileInt(L"SET", L"Priority", 0, iniPath.c_str()) ;
 	dlg.flush = GetPrivateProfileInt(L"SET", L"Flush", 0, iniPath.c_str()) ? true : false ;
-    dlg.shrink = GetPrivateProfileInt(L"SET", L"Shrink", 0, iniPath.c_str()) ? true : false ;
+	dlg.shrink = GetPrivateProfileInt(L"SET", L"Shrink", 0, iniPath.c_str()) ? true : false ;
 
 	if( dlg.CreateSettingDialog(g_instance, parentWnd) == IDOK ){
 		WritePrivateProfileString(L"SET", L"Size", dlg.size.c_str(), iniPath.c_str());

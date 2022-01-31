@@ -1,6 +1,9 @@
 #include "StdAfx.h"
-#include "SettingDlg.h"
 #include "resource.h"
+#include "WriteMain.h"
+
+#include "SettingDlg.h"
+
 
 CSettingDlg::CSettingDlg(void)
 {}
@@ -64,13 +67,18 @@ LRESULT CALLBACK CSettingDlg::DlgProc(HWND hDlgWnd, UINT msg, WPARAM wp, LPARAM 
 					CSettingDlg *this_ = reinterpret_cast<CSettingDlg*>(
 						GetWindowLongPtr(hDlgWnd, GWLP_USERDATA)) ;
 					if(this_&&!this_->triStatePriority) {
-						HWND wpchk = GetDlgItem(hDlgWnd, IDC_CHECK_PRIORITY);
+						HWND wpchk = HWND(lp);
 						int pchk = (int) SendMessage(wpchk, BM_GETCHECK, 0, 0);
 						if(pchk==BST_INDETERMINATE)
 							SendMessage(wpchk, BM_SETCHECK, BST_UNCHECKED, 0);
 					}
 					return FALSE;
 				}
+				case IDC_BUTTON_RESCUE:
+					if(HIWORD(wp)==BN_CLICKED) {
+						CWriteMain::FileRescueTool(hDlgWnd);
+					}
+					return FALSE;
 				default:
 					return FALSE;
 				}

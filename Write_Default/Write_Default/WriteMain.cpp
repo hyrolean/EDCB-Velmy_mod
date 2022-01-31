@@ -1,5 +1,8 @@
 #include "StdAfx.h"
 #include <process.h>
+#include <commdlg.h>
+#include <shlObj.h>
+#include <ShellAPI.h>
 #include <Shlwapi.h>
 #pragma comment(lib, "Shlwapi.lib")
 
@@ -44,8 +47,8 @@ CWriteMain::CWriteMain(void)
 		emptyIndices.push_back(i);
 	}
 
-	_OutputDebugString(L"★CWriteMain Size=%d Packet=%d Reserve=%d Priority=%d Flush=%d\n",
-		bufferSize, maxPackets, doReserve, writerPriority, doFlush);
+	_OutputDebugString(L"★CWriteMain Size=%d Packet=%d Reserve=%d Priority=%d Flush=%d Shrink=%d\n",
+		bufferSize, maxPackets, doReserve, writerPriority, doFlush, doShrink);
 }
 
 
@@ -380,7 +383,9 @@ BOOL CWriteMain::WriterWriteOnePacket()
 		}
 		//パケットを未使用に
 		if(beShrunk) {
+			LeaveCriticalSection(&critical);
 			packets[index]->dispose();
+			EnterCriticalSection(&critical);
 			emptyIndices.push_front(index);
 		}
 		else {
@@ -457,4 +462,199 @@ BOOL CWriteMain::GetNextFileName(wstring filePath, wstring& newPath)
 		}
 	}
 	return FALSE;
+}
+
+
+static wstring batCharEscSeqW(wstring src)
+{
+	wstring r;
+	for(auto c : src) {
+		if(c==L'%') r += L"%%";
+		else r+=c;
+	}
+	return r;
+}
+
+static string batCharEscSeq(string src)
+{
+	wstring strW;
+	AtoW(src, strW);
+	string r;
+	WtoA(batCharEscSeqW(strW), r);
+	return r;
+}
+
+BOOL CWriteMain::FileRescueToolSub(HWND hWnd, FILE *batSt, wstring errFile, vector<string> &recFiles)
+{
+	FILE *errSt=NULL;
+	errno_t err = _wfopen_s(&errSt,errFile.c_str(),L"rt");
+	BOOL result=FALSE;
+	if(!err&&errSt!=NULL) {
+		char orgPath[MAX_PATH], rdrctPath[MAX_PATH];
+		unsigned __int64 orgSize;
+		for (;;) {
+			int n = fscanf_s(errSt,
+				"ファイル \"%[^\"]\" は、 %I64u バイト書き込み後、"
+				"出力に失敗した為、ファイル \"%[^\"]\" へリダイレクトされました。\n",
+				orgPath, MAX_PATH, &orgSize, rdrctPath, MAX_PATH);
+			if(n==3) {
+				wstring prevErrFile, orgW;
+				AtoW(orgPath, orgW);
+				prevErrFile = orgW+L".Write_Default.err";
+				if(PathFileExists(prevErrFile.c_str())) {
+					if(!FileRescueToolSub(hWnd,batSt,prevErrFile,recFiles))
+					{ result = FALSE; break; }
+				}else
+					recFiles.push_back(orgPath);
+				fprintf(batSt,"fsutil file seteof \"%s\" %I64u\n",batCharEscSeq(orgPath).c_str(),orgSize);
+				recFiles.push_back(rdrctPath);
+				result=TRUE;
+			}else if(!result) {
+				wstring mess ;
+				Format(mess, L"ファイル \"%s\" の内容を正常に検出できませんでした。", errFile.c_str());
+				MessageBox(hWnd, mess.c_str(), L"録画ファイルレスキュー", MB_ICONSTOP|MB_OK);
+			}else break;
+		}
+		fclose(errSt);
+	}else {
+		wstring mess ;
+		Format(mess, L"ファイル \"%s\" をオープンできません。", errFile.c_str());
+		MessageBox(hWnd, mess.c_str(), L"録画ファイルレスキュー", MB_ICONSTOP|MB_OK);
+	}
+	return result;
+}
+
+BOOL CWriteMain::FileRescueToolMain(HWND hWnd, wstring batFile, wstring outPath, wstring errFile)
+{
+	FILE *batSt=NULL;
+	errno_t err = _wfopen_s(&batSt,batFile.c_str(),L"a+t");
+	BOOL result=FALSE;
+	if(!err&&batSt!=NULL) {
+		vector<string> recFiles;
+		result = FileRescueToolSub(hWnd, batSt, errFile, recFiles);
+		if(result) {
+			fprintf(batSt, "copy /b ");
+			string outFile="";
+			for(size_t i=0;i<recFiles.size();i++) {
+				if(i>0) fprintf(batSt, "+ ");
+				else /*i==0*/ {
+					WCHAR szPath[_MAX_PATH];
+					WCHAR szDrive[_MAX_DRIVE];
+					WCHAR szDir[_MAX_DIR];
+					WCHAR szFname[_MAX_FNAME];
+					WCHAR szExt[_MAX_EXT];
+					wstring strW,strNw;
+					AtoW(recFiles[i], strW);
+					_wsplitpath_s( strW.c_str(), szDrive, _MAX_DRIVE, szDir, _MAX_DIR, szFname, _MAX_FNAME, szExt, _MAX_EXT );
+					_wmakepath_s(  szPath, _MAX_PATH, szDrive, szDir, NULL, NULL );
+					Format(strW,L"%s\\%s%s",outPath.c_str(),szFname,szExt);
+					strNw=strW;
+					if(PathFileExists(strNw.c_str()))
+						GetNextFileName(strW,strNw);
+					WtoA(strNw, outFile);
+				}
+				fprintf(batSt,"\"%s\" ",batCharEscSeq(recFiles[i]).c_str());
+			}
+			fprintf(batSt,"\"%s\"\n",batCharEscSeq(outFile).c_str());
+		}else {
+			fprintf(batSt,"REM ERROR occurred!!\n");
+			fclose(batSt);
+			return FALSE;
+		}
+		fclose(batSt);
+	}else {
+		wstring mess ;
+		Format(mess, L"バッチファイル \"%s\" を作成できませんでした。", batFile.c_str());
+		MessageBox(hWnd, mess.c_str(), L"録画ファイルレスキュー", MB_ICONSTOP|MB_OK);
+		return FALSE;
+	}
+	return TRUE;
+}
+
+void CWriteMain::FileRescueTool(HWND hWnd)
+{
+	const decltype(OPENFILENAME::nMaxFile) MAX_RESULTS = 8192;
+	WCHAR strErrFiles[MAX_RESULTS]=L"";
+	OPENFILENAME ofn={0};
+	ofn.lStructSize = sizeof (OPENFILENAME);
+	ofn.hwndOwner = hWnd;
+	ofn.lpstrFilter = 	L"Error log (*.Write_Default.err)\0*.Write_Default.err\0"
+					L"All files (*.*)\0*.*\0\0";
+	ofn.lpstrTitle = L"最後に出力されたエラーログの選択(複数選択可)";
+	ofn.lpstrFile = strErrFiles;
+	ofn.nMaxFile = MAX_RESULTS;
+	ofn.Flags = OFN_FILEMUSTEXIST | OFN_HIDEREADONLY | OFN_ALLOWMULTISELECT | OFN_EXPLORER ;
+
+	if (GetOpenFileName(&ofn) == 0) {
+		return ;
+	}
+
+	vector<wstring> errFiles;
+	bool nl=true;
+	for(int len=0;len<MAX_RESULTS-1;len++) {
+		if(nl) { errFiles.push_back(&strErrFiles[len]); nl=false; }
+		if(!strErrFiles[len]) {
+			if(!strErrFiles[len+1]) break ;
+			nl=true;
+		}
+	}
+
+	WCHAR strOutPath[MAX_PATH]=L"";
+	BROWSEINFO  binfo={0} ;
+	LPITEMIDLIST idlist;
+
+	binfo.hwndOwner=hWnd;
+	binfo.pidlRoot=NULL;
+	binfo.pszDisplayName=strOutPath;
+	binfo.lpszTitle=L"録画ファイルレスキュー先の選択";
+	binfo.ulFlags=BIF_RETURNONLYFSDIRS;
+	binfo.iImage=(int)NULL;
+	idlist=SHBrowseForFolder(&binfo);
+
+	if(idlist!=NULL) {
+		SHGetPathFromIDList(idlist,strOutPath);
+		CoTaskMemFree(idlist);
+	}
+
+	if(!strOutPath[0])
+		return;
+
+	wstring batFile = strOutPath ;
+	batFile += L"\\Write_Default.rescue.bat" ;
+	if(PathFileExists(batFile.c_str())) {
+		wstring newBatFile = batFile;
+		CWriteMain().GetNextFileName(batFile,newBatFile);
+		batFile = newBatFile;
+	}
+
+	for(auto errFile : errFiles) {
+		if(!PathFileExists(errFile.c_str())) {
+			wstring mess ;
+			Format(mess, L"エラーログ \"%s\" は、存在しません。", errFile.c_str());
+			MessageBox(hWnd, mess.c_str(), L"録画ファイルレスキュー", MB_ICONSTOP|MB_OK);
+			return ;
+		}
+		if(!CWriteMain().FileRescueToolMain(hWnd, batFile, strOutPath, errFile.c_str()))
+			return ;
+	}
+
+	FILE *batSt=NULL;
+	errno_t err = _wfopen_s(&batSt,batFile.c_str(),L"a+t");
+	if(!err&&batSt!=NULL) {
+		fprintf(batSt,"pause\n");
+		fclose(batSt);
+		#if 0 // パスに括弧が含まれているとうまく動作しない
+		wstring cmd = L"\"" + batFile + L"\"" ;
+		_wsystem(cmd.c_str());
+		#else
+		SHELLEXECUTEINFO info ;
+		ZeroMemory(&info,sizeof(info));
+		info.cbSize = sizeof(SHELLEXECUTEINFO) ;
+		//info.fMask |= SEE_MASK_NOCLOSEPROCESS ;
+		info.hwnd = hWnd ;
+		info.lpFile = batFile.c_str();
+		info.nShow = SW_SHOWNORMAL;
+		ShellExecuteEx(&info);
+		#endif
+	}
 }

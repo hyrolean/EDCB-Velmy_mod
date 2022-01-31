@@ -67,7 +67,7 @@ BEGIN
     BEGIN
         BLOCK "041104b0"
         BEGIN
-            VALUE "FileDescription", "Write_Default (MPWM MOD2+)"
+            VALUE "FileDescription", "Write_Default (MPWM MOD3)"
             VALUE "FileVersion", "0.10.48.0"
             VALUE "InternalName", "Write_Default.dll"
             VALUE "LegalCopyright", "りょうちん Copyright (C) 2010, MOD by hyrolean"
@@ -88,13 +88,13 @@ END
 // Dialog
 //
 
-IDD_DIALOG_SET DIALOGEX 0, 0, 203, 134
+IDD_DIALOG_SET DIALOGEX 0, 0, 203, 158
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "設定"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,85,113,50,14
-    PUSHBUTTON      "キャンセル",IDCANCEL,146,113,50,14
+    DEFPUSHBUTTON   "OK",IDOK,85,137,50,14
+    PUSHBUTTON      "キャンセル",IDCANCEL,146,137,50,14
     LTEXT           "書き込みバッファサイズ",IDC_STATIC,7,9,71,8
     EDITTEXT        IDC_EDIT_SIZE,87,7,77,14,ES_AUTOHSCROLL
     LTEXT           "bytes",IDC_STATIC,169,9,19,8
@@ -106,6 +106,7 @@ BEGIN
     CONTROL         "書き込みパケット毎にファイルバッファをフラッシュする",IDC_CHECK_FLUSHBUFFERS,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,15,78,173,10
     CONTROL         "書き込みバッファに未使用の空きができたら開放する",IDC_CHECK_SHRINK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,15,93,174,10
+    PUSHBUTTON      "録画ファイルレスキューツール...",IDC_BUTTON_RESCUE,45,111,112,14
 END
 
 
@@ -122,7 +123,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 196
         TOPMARGIN, 7
-        BOTTOMMARGIN, 127
+        BOTTOMMARGIN, 151
     END
 END
 #endif    // APSTUDIO_INVOKED

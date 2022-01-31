@@ -16,6 +16,8 @@
 
 class CWriteMain
 {
+	friend class CSettingDlg;
+
 public:
 	CWriteMain(void);
 	~CWriteMain(void);
@@ -67,7 +69,7 @@ public:
 		DWORD* writeSize
 		);
 
-protected: // MPWM (Massive Packet Writing Moderator) MOD2+ Fixed by hyrolean
+protected: // MPWM (Massive Packet Writing Moderator) MOD3 Fixed by hyrolean
 	class PACKET {
 		BYTE *data_;
 		size_t size_;
@@ -118,6 +120,10 @@ protected: // MPWM (Massive Packet Writing Moderator) MOD2+ Fixed by hyrolean
 	BOOL WriterWriteOnePacket();
 	unsigned int WriterThreadProcMain () ;
 	static unsigned int __stdcall WriterThreadProc (PVOID pv) ;
+
+	BOOL FileRescueToolSub(HWND hWnd, FILE *batSt, wstring errFile, vector<string> &recFiles);
+	BOOL FileRescueToolMain(HWND hWnd, wstring batFile, wstring outPath, wstring errFile);
+	static void FileRescueTool(HWND hWnd);
 
 protected:
 	HANDLE file;
