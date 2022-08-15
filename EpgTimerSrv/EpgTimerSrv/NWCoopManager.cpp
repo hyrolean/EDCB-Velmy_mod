@@ -22,7 +22,7 @@ CNWCoopManager::CNWCoopManager(void)
 	WSAData wsaData;
 	WSAStartup(MAKEWORD(2,0), &wsaData);
 
-	this->UpdateLastEpgFileTime() ;
+	lastEpgFileTime = 0LL ;
 }
 
 CNWCoopManager::~CNWCoopManager(void)
@@ -562,8 +562,46 @@ BOOL CNWCoopManager::IsUpdateEpgData()
 
 void CNWCoopManager::UpdateLastEpgFileTime()
 {
-	//Epg更新日時を現時刻に設定
-	lastEpgFileTime = GetNowI64Time() ;
+	if( QueueLock() == FALSE ) {
+		//Epg更新日時を現時刻に設定
+		lastEpgFileTime = GetNowI64Time() ;
+		return;
+	}
+	vector<wstring> chkingList;
+	chkingList = chkEpgFileList;
+	QueueUnLock();
+
+	wstring folderPath = L"";
+	GetEpgSavePath(folderPath);
+	folderPath += L"\\";
+
+	for( size_t i=0; i<chkingList.size(); i++ ){
+		//ローカルファイルのタイムスタンプ確認
+		LONGLONG localFileTime = 0;
+		wstring filePath = folderPath;
+		filePath += chkingList[i];
+
+		HANDLE file = _CreateFile(filePath.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL );
+		if( file != INVALID_HANDLE_VALUE){
+			FILETIME CreationTime;
+			FILETIME LastAccessTime;
+			FILETIME LastWriteTime;
+			GetFileTime(file, &CreationTime, &LastAccessTime, &LastWriteTime);
+
+			localFileTime = ((LONGLONG)LastWriteTime.dwHighDateTime)<<32 | (LONGLONG)LastWriteTime.dwLowDateTime;
+			CloseHandle(file);
+
+				// MARK : ローカルファイルのEPG最新日付チェック
+				if(lastEpgFileTime<localFileTime) {
+					lastEpgFileTime = localFileTime ;
+				}
+
+		}else{
+			if( GetLastError() != ERROR_FILE_NOT_FOUND ){
+				continue;
+			}
+		}
+	}
 }
 
 UINT WINAPI CNWCoopManager::ChkEpgThread(LPVOID param)
@@ -618,8 +656,9 @@ UINT WINAPI CNWCoopManager::ChkEpgThread(LPVOID param)
 
 					// MARK : ローカルファイルのEPG最新日付チェック
 					if(sys->lastEpgFileTime<localFileTime) {
+						if(sys->lastEpgFileTime+60*60*I64_1SEC<localFileTime)
+							chgFile = TRUE ;
 						sys->lastEpgFileTime = localFileTime ;
-						chgFile = TRUE ;
 					}
 
 			}else{
@@ -671,6 +710,10 @@ UINT WINAPI CNWCoopManager::ChkEpgThread(LPVOID param)
 						if( file != INVALID_HANDLE_VALUE){
 							DWORD writeSize = 0;
 							WriteFile(file, data, dataSize, &writeSize, NULL);
+							FILETIME LastWriteTime;
+							LastWriteTime.dwHighDateTime = (ULONGLONG)maxTime>>32 ;
+							LastWriteTime.dwLowDateTime = maxTime&0xFFFFFFFF ;
+							SetFileTime(file,NULL,NULL,&LastWriteTime); //最終更新時刻に設定
 							CloseHandle(file);
 							if(sys->lastEpgFileTime < maxTime)
 								sys->lastEpgFileTime = maxTime ;
