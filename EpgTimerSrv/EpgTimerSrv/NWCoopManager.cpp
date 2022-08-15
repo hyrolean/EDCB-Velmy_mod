@@ -655,10 +655,9 @@ UINT WINAPI CNWCoopManager::ChkEpgThread(LPVOID param)
 				CloseHandle(file);
 
 					// MARK : ローカルファイルのEPG最新日付チェック
-					if(sys->lastEpgFileTime<localFileTime) {
-						if(sys->lastEpgFileTime+60*60*I64_1SEC<localFileTime)
-							chgFile = TRUE ;
+					if(sys->lastEpgFileTime+60*60*I64_1SEC<localFileTime) {
 						sys->lastEpgFileTime = localFileTime ;
+						chgFile = TRUE ;
 					}
 
 			}else{
