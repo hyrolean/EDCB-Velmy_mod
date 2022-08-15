@@ -16,9 +16,11 @@ public:
 	void ResetResCheck();
 
 	BOOL SetChkEpgFile(vector<wstring>* chkFileList);
-	void StartChkEpgFile();
+	void StartChkEpgFile(bool checkServerEpg);
 	void StopChkEpgFile();
 	BOOL IsUpdateEpgData();
+
+	void UpdateLastEpgFileTime();
 protected:
 	typedef struct _CHK_RESERVE_INFO{
 		CReserveInfo* reserve;
@@ -47,6 +49,9 @@ protected:
 
 	vector<wstring> chkEpgFileList;
 	BOOL updateEpgData;
+
+	bool chkEpgSrv;
+	LONGLONG lastEpgFileTime ;
 protected:
 	//PublicAPIîrëºêßå‰óp
 	BOOL Lock(LPCWSTR log = NULL, DWORD timeOut = 60*1000);

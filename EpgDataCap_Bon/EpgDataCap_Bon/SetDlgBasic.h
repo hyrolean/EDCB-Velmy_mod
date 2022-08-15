@@ -38,8 +38,10 @@ public:
 	afx_msg void OnBnClickedButtonRecDown();
 	afx_msg void OnBnClickedButtonSetPath();
 	CString settingFolderPath;
+	CString epgFolderPath;
 	CString recFolderPath;
 	CListBox recFolderList;
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
 	virtual BOOL OnInitDialog();
+	afx_msg void OnBnClickedButtonSetEpgPath();
 };

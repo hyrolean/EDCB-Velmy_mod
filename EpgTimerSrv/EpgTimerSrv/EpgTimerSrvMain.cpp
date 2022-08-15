@@ -109,7 +109,7 @@ BOOL CEpgTimerSrvMain::Lock(LPCWSTR log, DWORD timeOut)
 		OutputDebugString(log);
 	}
 	DWORD dwRet = WaitForSingleObject(this->lockEvent, timeOut);
-	if( dwRet == WAIT_ABANDONED || 
+	if( dwRet == WAIT_ABANDONED ||
 		dwRet == WAIT_FAILED ||
 		dwRet == WAIT_TIMEOUT){
 			OutputDebugString(L"ŸCEpgTimerSrvMain::Lock FALSE");
@@ -167,7 +167,7 @@ void CEpgTimerSrvMain::StartMain(
 
 	CSendCtrlCmd sendCtrl;
 	DWORD countChkSuspend = 11;
-	
+
 	while(1){
 		if( WaitForSingleObject(this->stopEvent, 1*1000) == WAIT_OBJECT_0 ){
 			break;
@@ -308,7 +308,7 @@ void CEpgTimerSrvMain::ReloadSetting()
 			this->httpServer->StartServer(this->httpPort, HttpCallback, this, 0, GetCurrentProcessId());
 		}
 	}
-	
+
 	this->enableDMS = GetPrivateProfileInt(L"SET", L"EnableDMS", 0, iniPath.c_str());
 	if( this->enableDMS == FALSE ){
 		if( this->tcpSrvUtil != NULL ){
@@ -790,7 +790,7 @@ BOOL CEpgTimerSrvMain::AutoAddReserveEPG()
 										findGroup = TRUE;
 										break;
 								}
-					
+
 								ULONGLONG eventKey = _Create64Key2(
 									groupData.original_network_id,
 									groupData.transport_stream_id,
@@ -1087,7 +1087,7 @@ BOOL CEpgTimerSrvMain::AutoAddReserveProgram()
 						}
 						if( reserveList[j]->originalNetworkID != itr->second->originalNetworkID ||
 							reserveList[j]->transportStreamID != itr->second->transportStreamID ||
-							reserveList[j]->serviceID != itr->second->serviceID 
+							reserveList[j]->serviceID != itr->second->serviceID
 							){
 							continue;
 						}
@@ -1102,7 +1102,7 @@ BOOL CEpgTimerSrvMain::AutoAddReserveProgram()
 						//Œ©‚Â‚©‚ç‚È‚©‚Á‚½‚Ì‚Å—\–ñ’Ç‰Á
 						RESERVE_DATA item;
 						item.title = itr->second->title;
-						ConvertSystemTime(startTime, &item.startTime); 
+						ConvertSystemTime(startTime, &item.startTime);
 						item.startTimeEpg = item.startTime;
 						item.durationSecond = itr->second->durationSecond;
 						item.stationName = itr->second->stationName;
@@ -2246,8 +2246,7 @@ int CALLBACK CEpgTimerSrvMain::CtrlCmdCallback(void* param, CMD_STREAM* cmdParam
 					wstring val;
 					if( ReadVALUE2(ver, &val, cmdParam->data+readSize, cmdParam->dataSize-readSize, NULL ) == TRUE ){
 						wstring epgDataPath = L"";
-						GetSettingPath(epgDataPath);
-						epgDataPath += EPG_SAVE_FOLDER;
+						GetEpgSavePath(epgDataPath);
 						epgDataPath += L"\\";
 						epgDataPath += val;
 
@@ -2291,8 +2290,7 @@ int CALLBACK CEpgTimerSrvMain::CtrlCmdCallback(void* param, CMD_STREAM* cmdParam
 					wstring val;
 					if( ReadVALUE2(ver, &val, cmdParam->data+readSize, cmdParam->dataSize-readSize, NULL ) == TRUE ){
 						wstring epgDataPath = L"";
-						GetSettingPath(epgDataPath);
-						epgDataPath += EPG_SAVE_FOLDER;
+						GetEpgSavePath(epgDataPath);
 						epgDataPath += L"\\";
 						epgDataPath += val;
 
@@ -2329,7 +2327,7 @@ int CALLBACK CEpgTimerSrvMain::CtrlCmdCallback(void* param, CMD_STREAM* cmdParam
 				for( itr = sys->epgAutoAdd.dataIDMap.begin(); itr != sys->epgAutoAdd.dataIDMap.end(); itr++ ){
 					val.push_back(*(itr->second));
 				}
-				
+
 				WORD ver = (WORD)CMD_VER;
 
 				if( ReadVALUE2(ver, &ver, cmdParam->data, cmdParam->dataSize, NULL) == TRUE ){
@@ -2348,7 +2346,7 @@ int CALLBACK CEpgTimerSrvMain::CtrlCmdCallback(void* param, CMD_STREAM* cmdParam
 						resParam->param = CMD_ERR;
 					}
 				}
-				
+
 				sys->UnLock();
 			}else{
 				resParam->param = CMD_ERR_BUSY;
@@ -2452,7 +2450,7 @@ int CALLBACK CEpgTimerSrvMain::CtrlCmdCallback(void* param, CMD_STREAM* cmdParam
 				for( itr = sys->manualAutoAdd.dataIDMap.begin(); itr != sys->manualAutoAdd.dataIDMap.end(); itr++ ){
 					val.push_back(*(itr->second));
 				}
-				
+
 				WORD ver = (WORD)CMD_VER;
 
 				if( ReadVALUE2(ver, &ver, cmdParam->data, cmdParam->dataSize, NULL) == TRUE ){
@@ -2471,7 +2469,7 @@ int CALLBACK CEpgTimerSrvMain::CtrlCmdCallback(void* param, CMD_STREAM* cmdParam
 						resParam->param = CMD_ERR;
 					}
 				}
-				
+
 				sys->UnLock();
 			}else{
 				resParam->param = CMD_ERR_BUSY;
@@ -3048,7 +3046,7 @@ int CALLBACK CEpgTimerSrvMain::HttpCallback(void* param, HTTP_STREAM* recvParam,
 					htmlManager.GetChgAutoEpgPage(itr->second, "", &tunerList, sendParam);
 				}
 			}
-			
+
 		}else if( CompareNoCase(verb, "POST") == 0 ){
 			if(url.find("/reserveinfo.html") == 0 ){
 				string id = "";

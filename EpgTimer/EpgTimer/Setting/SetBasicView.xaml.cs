@@ -35,6 +35,7 @@ namespace EpgTimer.Setting
                 if (Settings.Instance.NoStyle == 1)
                 {
                     button_setPath.Style = null;
+                    button_setEpgPath.Style = null;
                     button_exe.Style = null;
                     button_rec_up.Style = null;
                     button_rec_down.Style = null;
@@ -57,6 +58,10 @@ namespace EpgTimer.Setting
                 buff.Clear();
                 IniFileHandler.GetPrivateProfileString("SET", "DataSavePath", SettingPath.DefSettingFolderPath, buff, 512, SettingPath.CommonIniPath);
                 textBox_setPath.Text = buff.ToString();
+
+                buff.Clear();
+                IniFileHandler.GetPrivateProfileString("SET", "DataSavePath_EPG", "", buff, 512, SettingPath.CommonIniPath);
+                textBox_setEpgPath.Text = buff.ToString();
 
                 string defRecExe = System.IO.Path.GetDirectoryName(Environment.GetCommandLineArgs()[0]) + "\\EpgDataCap_Bon.exe";
                 buff.Clear();
@@ -270,8 +275,11 @@ namespace EpgTimer.Setting
             try
             {
                 System.IO.Directory.CreateDirectory(textBox_setPath.Text);
+                if(textBox_setEpgPath.Text.Trim()!="")
+                  System.IO.Directory.CreateDirectory(textBox_setEpgPath.Text.Trim());
 
                 IniFileHandler.WritePrivateProfileString("SET", "DataSavePath", textBox_setPath.Text, SettingPath.CommonIniPath);
+                IniFileHandler.WritePrivateProfileString("SET", "DataSavePath_EPG", textBox_setEpgPath.Text.Trim(), SettingPath.CommonIniPath);
                 IniFileHandler.WritePrivateProfileString("SET", "RecExePath", textBox_exe.Text, SettingPath.CommonIniPath);
                 IniFileHandler.WritePrivateProfileString("SET", "RecFolderNum", listBox_recFolder.Items.Count.ToString(), SettingPath.CommonIniPath);
                 for (int i = 0; i < listBox_recFolder.Items.Count; i++)
@@ -385,6 +393,23 @@ namespace EpgTimer.Setting
                 if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                 {
                     textBox_setPath.Text = dlg.SelectedPath;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message + "\r\n" + ex.StackTrace);
+            }
+        }
+
+        private void button_setEpgPath_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Windows.Forms.FolderBrowserDialog dlg = new System.Windows.Forms.FolderBrowserDialog();
+                dlg.Description = "EPG関係保存フォルダ";
+                if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                {
+                    textBox_setEpgPath.Text = dlg.SelectedPath;
                 }
             }
             catch (Exception ex)

@@ -205,7 +205,7 @@ UINT WINAPI CSendUDP::SendThread(LPVOID pParam)
 
 
 #if USE_SELECT_SEND
-	auto doSelectSend = [](int sock, UINT wait, bool *sendOk=nullptr, bool *excepted=nullptr) {
+	auto doSelectSend = [](SOCKET sock, UINT wait, bool *sendOk=nullptr, bool *excepted=nullptr) {
 		fd_set fdSend, fdExcept ;
 		ZeroMemory(&fdSend,sizeof fdSend) ;
 		FD_ZERO(&fdSend);

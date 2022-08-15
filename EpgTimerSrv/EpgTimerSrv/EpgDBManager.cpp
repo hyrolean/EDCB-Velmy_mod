@@ -52,7 +52,7 @@ BOOL CEpgDBManager::Lock(LPCWSTR log, DWORD timeOut)
 		OutputDebugString(log);
 	}
 	DWORD dwRet = WaitForSingleObject(this->lockEvent, timeOut);
-	if( dwRet == WAIT_ABANDONED || 
+	if( dwRet == WAIT_ABANDONED ||
 		dwRet == WAIT_FAILED ||
 		dwRet == WAIT_TIMEOUT){
 			OutputDebugString(L"◆CEpgDBManager::Lock FALSE");
@@ -120,8 +120,7 @@ UINT WINAPI CEpgDBManager::LoadThread(LPVOID param)
 	//EPGファイルの検索
 	vector<wstring> epgFileList;
 	wstring epgDataPath = L"";
-	GetSettingPath(epgDataPath);
-	epgDataPath += EPG_SAVE_FOLDER;
+	GetEpgSavePath(epgDataPath);
 
 	wstring searchKey = epgDataPath;
 	searchKey += L"\\*_epg.dat";
@@ -445,12 +444,12 @@ void CEpgDBManager::SearchEvent(EPGDB_SEARCH_KEY_INFO* key, map<ULONGLONG, SEARC
 	if( key == NULL || resultMap == NULL ){
 		return ;
 	}
-	
+
 	if( key->andKey.size() == 0 && key->notKey.size() == 0 && key->contentList.size() == 0 && key->videoList.size() == 0 && key->audioList.size() == 0){
 		//キーワードもジャンル指定もないので検索しない
 		return ;
 	}
-	
+
 	//キーワード分解
 	vector<wstring> andKeyList;
 	vector<wstring> notKeyList;
@@ -469,7 +468,7 @@ void CEpgDBManager::SearchEvent(EPGDB_SEARCH_KEY_INFO* key, map<ULONGLONG, SEARC
 				}
 			}while( andBuff.size() != 0 );
 		}
-		
+
 		if( key->notKey.size() > 0 ){
 			wstring notBuff = key->notKey;
 			Replace(notBuff, L"　", L" ");
@@ -556,7 +555,7 @@ void CEpgDBManager::SearchEvent(EPGDB_SEARCH_KEY_INFO* key, map<ULONGLONG, SEARC
 			}
 		}
 	}
-	
+
 	//サービスごとに検索
 	for( size_t i=0; i<key->serviceList.size(); i++ ){
 		map<LONGLONG, EPGDB_SERVICE_DATA*>::iterator itrService;
@@ -590,7 +589,7 @@ void CEpgDBManager::SearchEvent(EPGDB_SEARCH_KEY_INFO* key, map<ULONGLONG, SEARC
 						//ジャンル情報ない
 						BOOL findNo = FALSE;
 						for( size_t j=0; j<key->contentList.size(); j++ ){
-							if( key->contentList[j].content_nibble_level_1 == 0xFF && 
+							if( key->contentList[j].content_nibble_level_1 == 0xFF &&
 								key->contentList[j].content_nibble_level_2 == 0xFF
 								){
 									//ジャンルなしの指定あり

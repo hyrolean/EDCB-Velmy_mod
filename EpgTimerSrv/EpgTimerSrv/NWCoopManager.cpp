@@ -22,6 +22,7 @@ CNWCoopManager::CNWCoopManager(void)
 	WSAData wsaData;
 	WSAStartup(MAKEWORD(2,0), &wsaData);
 
+	this->UpdateLastEpgFileTime() ;
 }
 
 CNWCoopManager::~CNWCoopManager(void)
@@ -78,7 +79,7 @@ BOOL CNWCoopManager::Lock(LPCWSTR log, DWORD timeOut)
 	//	_OutputDebugString(L"◆%s",log);
 	//}
 	DWORD dwRet = WaitForSingleObject(this->lockEvent, timeOut);
-	if( dwRet == WAIT_ABANDONED || 
+	if( dwRet == WAIT_ABANDONED ||
 		dwRet == WAIT_FAILED ||
 		dwRet == WAIT_TIMEOUT){
 			OutputDebugString(L"◆CNWCoopManager::Lock FALSE");
@@ -109,7 +110,7 @@ BOOL CNWCoopManager::QueueLock(LPCWSTR log, DWORD timeOut)
 		OutputDebugString(log);
 	}
 	DWORD dwRet = WaitForSingleObject(this->lockQueue, timeOut);
-	if( dwRet == WAIT_ABANDONED || 
+	if( dwRet == WAIT_ABANDONED ||
 		dwRet == WAIT_FAILED ||
 		dwRet == WAIT_TIMEOUT){
 			OutputDebugString(L"◆CNotifyManager::NotifyLock FALSE");
@@ -377,7 +378,7 @@ BOOL CNWCoopManager::GetIP2Host(wstring hostName, wstring& ip)
 	if( host->h_addr_list[0] == NULL ){
 		return FALSE;
 	}
-	Format(ip, L"%d.%d.%d.%d", 
+	Format(ip, L"%d.%d.%d.%d",
 			(BYTE)*((host->h_addr_list[0])) ,
 			(BYTE)*((host->h_addr_list[0]) + 1) ,
 			(BYTE)*((host->h_addr_list[0]) + 2) ,
@@ -401,7 +402,7 @@ BOOL CNWCoopManager::GetIP2Host(wstring hostName, string& ip)
 	if( host->h_addr_list[0] == NULL ){
 		return FALSE;
 	}
-	Format(ip, "%d.%d.%d.%d", 
+	Format(ip, "%d.%d.%d.%d",
 			(BYTE)*((host->h_addr_list[0])) ,
 			(BYTE)*((host->h_addr_list[0]) + 1) ,
 			(BYTE)*((host->h_addr_list[0]) + 2) ,
@@ -505,7 +506,7 @@ BOOL CNWCoopManager::SetChkEpgFile(vector<wstring>* chkFileList)
 	return ret;
 }
 
-void CNWCoopManager::StartChkEpgFile()
+void CNWCoopManager::StartChkEpgFile(bool checkServerEpg)
 {
 	if( Lock(L"CNWCoopManager::StartChkEpgFile") == FALSE ) return ;
 
@@ -516,6 +517,8 @@ void CNWCoopManager::StartChkEpgFile()
 			this->chkEpgThread = NULL;
 		}
 	}
+
+	this->chkEpgSrv = checkServerEpg ;
 
 	if( this->chkEpgThread == NULL ){
 		ResetEvent(this->chkEpgStopEvent);
@@ -557,6 +560,12 @@ BOOL CNWCoopManager::IsUpdateEpgData()
 	return ret;
 }
 
+void CNWCoopManager::UpdateLastEpgFileTime()
+{
+	//Epg更新日時を現時刻に設定
+	lastEpgFileTime = GetNowI64Time() ;
+}
+
 UINT WINAPI CNWCoopManager::ChkEpgThread(LPVOID param)
 {
 	CNWCoopManager* sys = (CNWCoopManager*)param;
@@ -577,14 +586,13 @@ UINT WINAPI CNWCoopManager::ChkEpgThread(LPVOID param)
 		chkingList = sys->chkEpgFileList;
 		sys->QueueUnLock();
 
-		if( chkingList.size() == 0 || srvList.size() == 0){
+		if( chkingList.size() == 0) {
 			//リストないので終了
 			return 0;
 		}
 
 		wstring folderPath = L"";
-		GetSettingPath(folderPath);
-		folderPath += EPG_SAVE_FOLDER;
+		GetEpgSavePath(folderPath);
 		folderPath += L"\\";
 
 		BOOL chgFile = FALSE;
@@ -606,8 +614,14 @@ UINT WINAPI CNWCoopManager::ChkEpgThread(LPVOID param)
 				GetFileTime(file, &CreationTime, &LastAccessTime, &LastWriteTime);
 
 				localFileTime = ((LONGLONG)LastWriteTime.dwHighDateTime)<<32 | (LONGLONG)LastWriteTime.dwLowDateTime;
-
 				CloseHandle(file);
+
+					// MARK : ローカルファイルのEPG最新日付チェック
+					if(sys->lastEpgFileTime<localFileTime) {
+						sys->lastEpgFileTime = localFileTime ;
+						chgFile = TRUE ;
+					}
+
 			}else{
 				if( GetLastError() != ERROR_FILE_NOT_FOUND ){
 					continue;
@@ -615,53 +629,56 @@ UINT WINAPI CNWCoopManager::ChkEpgThread(LPVOID param)
 			}
 
 			//サーバーのタイムスタンプ確認
-			wstring srvIP = L"";
-			WORD srvPort = 0;
-			LONGLONG maxTime = 0;
-			map<DWORD, COOP_SERVER_INFO>::iterator itr;
-			for( itr = srvList.begin(); itr != srvList.end(); itr++){
-				if( ::WaitForSingleObject(sys->chkEpgStopEvent, 0) != WAIT_TIMEOUT ){
-					//キャンセルされた
-					return 0;
-				}
-				sendCtrl.SetSendMode(TRUE);
-				wstring ip;
-				if( sys->GetIP2Host(itr->second.hostName, ip) == FALSE){
-					continue;
-				}
-				_OutputDebugString(L"++CNWCoopManager EPGChk ip %s\r\n", ip.c_str());
-				sendCtrl.SetNWSetting(ip, itr->second.srvPort);
-				sendCtrl.SetConnectTimeOut(15*1000);
+			if(sys->chkEpgSrv && !srvList.empty()) {
+				wstring srvIP = L"";
+				WORD srvPort = 0;
+				LONGLONG maxTime = 0;
+				map<DWORD, COOP_SERVER_INFO>::iterator itr;
+				for( itr = srvList.begin(); itr != srvList.end(); itr++){
+					if( ::WaitForSingleObject(sys->chkEpgStopEvent, 0) != WAIT_TIMEOUT ){
+						//キャンセルされた
+						return 0;
+					}
+					sendCtrl.SetSendMode(TRUE);
+					wstring ip;
+					if( sys->GetIP2Host(itr->second.hostName, ip) == FALSE){
+						continue;
+					}
+					_OutputDebugString(L"++CNWCoopManager EPGChk ip %s\r\n", ip.c_str());
+					sendCtrl.SetNWSetting(ip, itr->second.srvPort);
+					sendCtrl.SetConnectTimeOut(15*1000);
 
-				LONGLONG fileTime = 0;
-				DWORD err = sendCtrl.SendGetEpgFileTime2(chkingList[i], &fileTime);
-				if( err == CMD_SUCCESS ){
-					if( maxTime < fileTime ){
-						srvIP = ip;
-						srvPort = itr->second.srvPort;
-						maxTime = fileTime;
+					LONGLONG fileTime = 0;
+					DWORD err = sendCtrl.SendGetEpgFileTime2(chkingList[i], &fileTime);
+					if( err == CMD_SUCCESS ){
+						if( maxTime < fileTime ){
+							srvIP = ip;
+							srvPort = itr->second.srvPort;
+							maxTime = fileTime;
+						}
 					}
 				}
-			}
-			if( maxTime > 0 && maxTime > (localFileTime + 60*60*I64_1SEC)){
-				//1時間以上新しいファイルなので取得する
-				sendCtrl.SetNWSetting(srvIP, srvPort);
-				sendCtrl.SetConnectTimeOut(15*1000);
+				if( maxTime > 0 && maxTime > (localFileTime + 60*60*I64_1SEC)){
+					//1時間以上新しいファイルなので取得する
+					sendCtrl.SetNWSetting(srvIP, srvPort);
+					sendCtrl.SetConnectTimeOut(15*1000);
 
-				BYTE* data = NULL;
-				DWORD dataSize = 0;
-				DWORD err = sendCtrl.SendGetEpgFile2(chkingList[i], &data, &dataSize);
-				if( err == CMD_SUCCESS ){
-					file = _CreateFile2(filePath.c_str(), GENERIC_WRITE, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
-					if( file != INVALID_HANDLE_VALUE){
-						DWORD writeSize = 0;
-						WriteFile(file, data, dataSize, &writeSize, NULL);
-						CloseHandle(file);
-
-						chgFile = TRUE;
-						_OutputDebugString(L"ip:%s port: %d のファイルでEPG更新：%s\r\n", srvIP.c_str(), srvPort, filePath.c_str());
+					BYTE* data = NULL;
+					DWORD dataSize = 0;
+					DWORD err = sendCtrl.SendGetEpgFile2(chkingList[i], &data, &dataSize);
+					if( err == CMD_SUCCESS ){
+						file = _CreateFile2(filePath.c_str(), GENERIC_WRITE, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
+						if( file != INVALID_HANDLE_VALUE){
+							DWORD writeSize = 0;
+							WriteFile(file, data, dataSize, &writeSize, NULL);
+							CloseHandle(file);
+							if(sys->lastEpgFileTime < maxTime)
+								sys->lastEpgFileTime = maxTime ;
+							chgFile = TRUE;
+							_OutputDebugString(L"ip:%s port: %d のファイルでEPG更新：%s\r\n", srvIP.c_str(), srvPort, filePath.c_str());
+						}
+						SAFE_DELETE_ARRAY(data);
 					}
-					SAFE_DELETE_ARRAY(data);
 				}
 			}
 		}

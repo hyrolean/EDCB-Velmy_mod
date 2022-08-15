@@ -29,7 +29,7 @@ void GetDefSettingPath(wstring& strPath)
 	WCHAR szExt[_MAX_EXT];
 	_wsplitpath_s( strExePath, szDrive, _MAX_DRIVE, szDir, _MAX_DIR, szFname, _MAX_FNAME, szExt, _MAX_EXT );
 	_wmakepath_s(  szPath, _MAX_PATH, szDrive, szDir, NULL, NULL );
-	
+
 	strPath = L"";
 	strPath += szPath;
 	strPath += L"Setting";
@@ -40,15 +40,16 @@ void GetSettingPath(wstring& strPath)
 	strPath = L"";
 	wstring strIni = L"";
 	GetCommonIniPath(strIni);
-	
+
 	WCHAR wPath[512]=L"";
 	GetPrivateProfileString( L"Set", L"DataSavePath", L"", wPath, 512, strIni.c_str() );
 	strPath = wPath;
-	if( strPath.empty() == true ){
+	if( strPath.empty() ){
 		GetDefSettingPath(strPath);
 	}
 	ChkFolderPath(strPath);
 }
+
 
 void GetModuleFolderPath(wstring& strPath)
 {
@@ -64,7 +65,7 @@ void GetModuleFolderPath(wstring& strPath)
 	_wmakepath_s(  szPath, _MAX_PATH, szDrive, szDir, NULL, NULL );
 	int iLen = lstrlen(szPath);
 	szPath[iLen-1] = '\0';
-	
+
 	strPath = L"";
 	strPath += szPath;
 	ChkFolderPath(strPath);
@@ -82,7 +83,7 @@ void GetModuleIniPath(wstring& strPath)
 	WCHAR szExt[_MAX_EXT];
 	_wsplitpath_s( strExePath, szDrive, _MAX_DRIVE, szDir, _MAX_DIR, szFname, _MAX_FNAME, szExt, _MAX_EXT );
 	_wmakepath_s(  szPath, _MAX_PATH, szDrive, szDir, NULL, NULL );
-	
+
 	strPath = L"";
 	strPath += szPath;
 	strPath += szFname;
@@ -101,7 +102,7 @@ void GetCommonIniPath(wstring& strPath)
 	WCHAR szExt[_MAX_EXT];
 	_wsplitpath_s( strExePath, szDrive, _MAX_DRIVE, szDir, _MAX_DIR, szFname, _MAX_FNAME, szExt, _MAX_EXT );
 	_wmakepath_s(  szPath, _MAX_PATH, szDrive, szDir, NULL, NULL );
-	
+
 	strPath = L"";
 	strPath += szPath;
 	strPath += L"Common.ini";
@@ -119,17 +120,35 @@ void GetEpgTimerSrvIniPath(wstring& strPath)
 	WCHAR szExt[_MAX_EXT];
 	_wsplitpath_s( strExePath, szDrive, _MAX_DRIVE, szDir, _MAX_DIR, szFname, _MAX_FNAME, szExt, _MAX_EXT );
 	_wmakepath_s(  szPath, _MAX_PATH, szDrive, szDir, NULL, NULL );
-	
+
 	strPath = L"";
 	strPath += szPath;
 	strPath += L"EpgTimerSrv.ini";
 }
 
-void GetEpgSavePath(wstring& strPath)
+void GetEpgSavePath(wstring& strPath, bool iniValue)
 {
 	strPath = L"";
-	GetSettingPath(strPath);
-	strPath += EPG_SAVE_FOLDER;
+	wstring strIni = L"";
+	GetCommonIniPath(strIni);
+
+	WCHAR wPath[512]=L"";
+	GetPrivateProfileString( L"Set", L"DataSavePath_EPG", L"", wPath, 512, strIni.c_str() );
+
+	if(iniValue) {
+		strPath = wPath ;
+		return;
+	}
+
+	if(!wPath[0]) {
+		GetSettingPath(strPath);
+		if(strPath.empty())
+			GetDefSettingPath(strPath) ;
+		strPath += EPG_SAVE_FOLDER;
+	}
+	else strPath = wPath;
+
+	ChkFolderPath(strPath);
 }
 
 void GetLogoSavePath(wstring& strPath)
@@ -144,7 +163,7 @@ void GetRecFolderPath(wstring& strPath)
 	strPath = L"";
 	wstring strIni = L"";
 	GetCommonIniPath(strIni);
-	
+
 	WCHAR wPath[512]=L"";
 	GetPrivateProfileString( L"Set", L"RecFolderPath0", L"", wPath, 512, strIni.c_str() );
 	strPath = wPath;

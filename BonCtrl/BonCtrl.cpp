@@ -1635,8 +1635,7 @@ UINT WINAPI CBonCtrl::EpgCapThread(LPVOID param)
 void CBonCtrl::GetEpgDataFilePath(WORD ONID, WORD TSID, wstring& epgDataFilePath)
 {
 	wstring epgDataFolderPath = L"";
-	GetSettingPath(epgDataFolderPath);
-	epgDataFolderPath += EPG_SAVE_FOLDER;
+	GetEpgSavePath(epgDataFolderPath);
 
 	if( ONID == 4 && this->BSBasic == TRUE ){
 		Format(epgDataFilePath, L"%s\\%04XFFFF_epg.dat", epgDataFolderPath.c_str(), ONID);

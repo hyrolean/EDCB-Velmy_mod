@@ -7,7 +7,7 @@
 #include "../../Common/EpgTimerUtil.h"
 
 #include "CheckRecFile.h"
-#include <tlhelp32.h> 
+#include <tlhelp32.h>
 #include <shlwapi.h>
 #include <algorithm>
 #include <locale>
@@ -205,7 +205,7 @@ BOOL CReserveManager::Lock(LPCWSTR log, DWORD timeOut)
 	//	_OutputDebugString(L"◆%s",log);
 	//}
 	DWORD dwRet = WaitForSingleObject(this->lockEvent, timeOut);
-	if( dwRet == WAIT_ABANDONED || 
+	if( dwRet == WAIT_ABANDONED ||
 		dwRet == WAIT_FAILED ||
 		dwRet == WAIT_TIMEOUT){
 			OutputDebugString(L"◆CReserveManager::Lock FALSE");
@@ -236,7 +236,7 @@ BOOL CReserveManager::NotifyLock(LPCWSTR log, DWORD timeOut)
 		OutputDebugString(log);
 	}
 	DWORD dwRet = WaitForSingleObject(this->lockNotify, timeOut);
-	if( dwRet == WAIT_ABANDONED || 
+	if( dwRet == WAIT_ABANDONED ||
 		dwRet == WAIT_FAILED ||
 		dwRet == WAIT_TIMEOUT){
 			OutputDebugString(L"◆CReserveManager::NotifyLock FALSE");
@@ -399,7 +399,7 @@ void CReserveManager::ReloadSetting()
 	this->defRebootFlag = GetPrivateProfileInt(L"SET", L"Reboot", 0, iniAppPath.c_str());
 
 	this->batMargin = GetPrivateProfileInt(L"SET", L"BatMargin", 10, iniAppPath.c_str());
-	
+
 	this->noStandbyExeList.clear();
 	count = GetPrivateProfileInt(L"NO_SUSPEND", L"Count", 0, iniAppPath.c_str());
 	if( count == 0 ){
@@ -476,7 +476,7 @@ void CReserveManager::ReloadSetting()
 	map<DWORD, CTunerBankCtrl*>::iterator itrCtrl;
 	for( itrCtrl = this->tunerBankMap.begin(); itrCtrl != this->tunerBankMap.end(); itrCtrl++ ){
 		itrCtrl->second->ReloadSetting();
-		itrCtrl->second->SetAutoDel(this->autoDel, &this->delExtList, &this->delFolderList); 
+		itrCtrl->second->SetAutoDel(this->autoDel, &this->delExtList, &this->delFolderList);
 	}
 
 	WCHAR buff[512] = L"";
@@ -568,7 +568,7 @@ void CReserveManager::ReloadSetting()
 	}
 
 	this->useEpgSrvCoop = GetPrivateProfileInt(L"SET", L"UseEpgSrvCoop", 0, iniAppPath.c_str());
-	if( this->useEpgSrvCoop == TRUE && this->useSrvCoop == TRUE){
+	if( /*this->useEpgSrvCoop == TRUE && this->useSrvCoop == TRUE*/ true){
 		vector<wstring> fileList;
 		GetSrvCoopEpgList(&fileList);
 		this->nwCoopManager.SetChkEpgFile(&fileList);
@@ -887,7 +887,7 @@ UINT WINAPI CReserveManager::SendNotifyStatusThread(LPVOID param)
 			sys->registGUIMap.erase(itr);
 		}
 	}
-	
+
 	map<wstring, REGIST_TCP_INFO>::iterator itrTCP;
 	vector<wstring> errIP;
 	for( itrTCP = sys->registTCPMap.begin(); itrTCP != sys->registTCPMap.end(); itrTCP++){
@@ -1001,7 +1001,7 @@ BOOL CReserveManager::ReloadReserveData()
 						}
 					}
 				}
-				
+
 				this->reserveInfoMap.insert(pair<DWORD, CReserveInfo*>(itrData->second->reserveID, item));
 				LONGLONG keyID = _Create64Key2(
 					itrData->second->originalNetworkID,
@@ -1501,7 +1501,7 @@ BOOL CReserveManager::_ChgReserveData(RESERVE_DATA* reserve, BOOL chgTime)
 				setData.durationSecond = reserve->durationSecond;
 			}
 		}
-		
+
 	}else{
 		if( setData.eventID == 0xFFFF ){
 			//プログラム予約の場合チャンネルが変わっている可能性あるためチェック
@@ -1675,7 +1675,7 @@ void CReserveManager::ReloadBankMap(BOOL notify)
 		_SendNotifyUpdate(NOTIFY_UPDATE_RESERVE_INFO);
 		_SendNotifyUpdate(NOTIFY_UPDATE_REC_INFO);
 	}
-	
+
 	UnLock();
 }
 
@@ -2044,7 +2044,7 @@ BOOL CReserveManager::ChangeNGReserve(BANK_WORK_INFO* inItem)
 				}
 
 				//時間かぶっている予約かチェック
-				if( itrWork->second->startTime <= inItem->startTime && 
+				if( itrWork->second->startTime <= inItem->startTime &&
 					inItem->startTime < itrWork->second->endTime){
 					//開始時間が含まれている
 						chkReserve.push_back(itrWork->second);
@@ -2301,7 +2301,7 @@ DWORD CReserveManager::ChkInsertStatus(BANK_INFO* bank, BANK_WORK_INFO* inItem, 
 					if(( itrBank->second->startTime <= inItem->startTime && inItem->startTime <= itrBank->second->endTime ) ||
 						( itrBank->second->startTime <= inItem->endTime && inItem->endTime <= itrBank->second->endTime ) ||
 						( inItem->startTime <= itrBank->second->startTime && itrBank->second->startTime <= inItem->endTime ) ||
-						( inItem->startTime <= itrBank->second->endTime && itrBank->second->endTime <= inItem->endTime ) 
+						( inItem->startTime <= itrBank->second->endTime && itrBank->second->endTime <= inItem->endTime )
 						){
 							//開始時間か終了時間が重なっている
 							status = 1;
@@ -2320,7 +2320,7 @@ DWORD CReserveManager::ChkInsertStatus(BANK_INFO* bank, BANK_WORK_INFO* inItem, 
 			}else if(( itrBank->second->startTime <= inItem->startTime && inItem->startTime <= itrBank->second->endTime ) ||
 				( itrBank->second->startTime <= inItem->endTime && inItem->endTime <= itrBank->second->endTime ) ||
 				( inItem->startTime <= itrBank->second->startTime && itrBank->second->startTime <= inItem->endTime ) ||
-				( inItem->startTime <= itrBank->second->endTime && itrBank->second->endTime <= inItem->endTime ) 
+				( inItem->startTime <= itrBank->second->endTime && itrBank->second->endTime <= inItem->endTime )
 				){
 					//開始時間か終了時間が重なっている
 					status = 0;
@@ -2465,14 +2465,14 @@ UINT WINAPI CReserveManager::BankCheckThread(LPVOID param)
 			LONGLONG capTime = 0;
 			BOOL swBasicOnly = false;
 			if( sys->GetNextEpgcapTime(&capTime, -1,&swBasicOnly) == TRUE ){
-				if( sys->useSrvCoop == TRUE &&sys->useEpgSrvCoop == TRUE){
+				if( /*sys->useSrvCoop == TRUE*/ true){
 					if( (GetNowI64Time()+10*60*I64_1SEC) > capTime ){
 						//10分前になったらサーバー連携EPGチェックをやめる
 						sys->nwCoopManager.StopChkEpgFile();
 					}else{
 						if( sys->_IsEpgCap() == FALSE ){
 							//EPGの取得していなければサーバー連携EPGチェックをする
-							sys->nwCoopManager.StartChkEpgFile();
+							sys->nwCoopManager.StartChkEpgFile(sys->useSrvCoop && sys->useEpgSrvCoop);
 						}
 					}
 				}
@@ -2547,9 +2547,9 @@ UINT WINAPI CReserveManager::BankCheckThread(LPVOID param)
 				}
 			}else{
 				//EPGの取得予定なし
-				if( sys->useSrvCoop == TRUE &&sys->useEpgSrvCoop == TRUE){
+				if( /*sys->useSrvCoop == TRUE*/ true){
 					//サーバー連携EPGチェックをする
-					sys->nwCoopManager.StartChkEpgFile();
+					sys->nwCoopManager.StartChkEpgFile(sys->useSrvCoop && sys->useEpgSrvCoop);
 				}
 			}
 			sys->UnLock();
@@ -2594,6 +2594,8 @@ UINT WINAPI CReserveManager::BankCheckThread(LPVOID param)
 					sys->epgCapCheckFlag = FALSE;
 					sys->EnableSuspendWork(0, 0, 1);
 					sendPreEpgCap = FALSE;
+					// MARK : EPG取得時刻更新
+					sys->nwCoopManager.UpdateLastEpgFileTime();
 				}
 				sys->UnLock();
 			}
@@ -2607,13 +2609,15 @@ UINT WINAPI CReserveManager::BankCheckThread(LPVOID param)
 					sys->UnLock();
 				}
 			}
-			if( sys->useEpgSrvCoop == TRUE ){
-				if( sys->Lock(L"BankCheckThread11") == TRUE){
-					if( sys->nwCoopManager.IsUpdateEpgData() == TRUE){
-						sys->enableEpgReload = 1;
-					}
-					sys->UnLock();
+		}
+
+		//外部要因による不定期EPG更新
+		if( /*sys->useEpgSrvCoop ==*/ TRUE ){
+			if( sys->Lock(L"BankCheckThread11") == TRUE){
+				if( sys->nwCoopManager.IsUpdateEpgData() == TRUE){
+					sys->enableEpgReload = 1;
 				}
+				sys->UnLock();
 			}
 		}
 	}
@@ -2784,7 +2788,7 @@ void CReserveManager::CheckErrReserve()
 
 				itrCtrl->second->DeleteReserve(data.reserveID);
 			}
-			
+
 			itrCtrl->second->ResetOpenErr();
 			needNotify = TRUE;
 		}
@@ -2961,7 +2965,7 @@ void CReserveManager::CheckTuijyu()
 				continue;
 			}
 		}
-	
+
 		DWORD chkChID = ((DWORD)data.originalNetworkID)<<16 | data.transportStreamID;
 
 		itrCtrl = chkTuner.find(chkChID);
@@ -3716,7 +3720,7 @@ BOOL CReserveManager::CheckEventRelay(EPGDB_EVENT_INFO* info, RESERVE_DATA* data
 			title = info->shortInfo->event_name;
 		}
 		_OutputDebugString(L"EventRelayCheck");
-		_OutputDebugString(L"OriginalEvent : ONID 0x%08x TSID 0x%08x SID 0x%08x EventID 0x%08x %s", 
+		_OutputDebugString(L"OriginalEvent : ONID 0x%08x TSID 0x%08x SID 0x%08x EventID 0x%08x %s",
 			info->original_network_id,
 			info->transport_stream_id,
 			info->service_id,
@@ -3729,7 +3733,7 @@ BOOL CReserveManager::CheckEventRelay(EPGDB_EVENT_INFO* info, RESERVE_DATA* data
 				info->eventRelayInfo->eventDataList[i].transport_stream_id,
 				info->eventRelayInfo->eventDataList[i].service_id);
 
-			_OutputDebugString(L"RelayEvent : ONID 0x%08x TSID 0x%08x SID 0x%08x EventID 0x%08x", 
+			_OutputDebugString(L"RelayEvent : ONID 0x%08x TSID 0x%08x SID 0x%08x EventID 0x%08x",
 				info->eventRelayInfo->eventDataList[i].original_network_id,
 				info->eventRelayInfo->eventDataList[i].transport_stream_id,
 				info->eventRelayInfo->eventDataList[i].service_id,
@@ -3739,7 +3743,7 @@ BOOL CReserveManager::CheckEventRelay(EPGDB_EVENT_INFO* info, RESERVE_DATA* data
 			itrCh = this->chUtil.chList.find(chKey);
 			if( itrCh != this->chUtil.chList.end() ){
 				//使用できるチャンネル発見
-				_OutputDebugString(L"Service find : %s", 
+				_OutputDebugString(L"Service find : %s",
 					itrCh->second.serviceName.c_str()
 					);
 
@@ -3777,7 +3781,7 @@ BOOL CReserveManager::CheckEventRelay(EPGDB_EVENT_INFO* info, RESERVE_DATA* data
 						if( itrRecInfo->second->originalNetworkID == info->eventRelayInfo->eventDataList[i].original_network_id &&
 							itrRecInfo->second->transportStreamID == info->eventRelayInfo->eventDataList[i].transport_stream_id &&
 							itrRecInfo->second->serviceID == info->eventRelayInfo->eventDataList[i].service_id &&
-							itrRecInfo->second->eventID == info->eventRelayInfo->eventDataList[i].event_id 
+							itrRecInfo->second->eventID == info->eventRelayInfo->eventDataList[i].event_id
 							){
 								if( ConvertI64Time(itrRecInfo->second->startTime) == GetSumTime(info->start_time, info->durationSec)){
 									//エラーで録画終了になった？
@@ -4518,7 +4522,7 @@ void CReserveManager::StopEpgCap()
 	for( itr = this->tunerBankMap.begin(); itr != this->tunerBankMap.end(); itr++ ){
 		itr->second->StopEpgCap();
 	}
-		 
+
 	UnLock();
 }
 
@@ -4527,7 +4531,7 @@ BOOL CReserveManager::IsEpgCap()
 	if( Lock(L"StopEpgCap") == FALSE ) return FALSE;
 
 	BOOL ret = _IsEpgCap();
-		 
+
 	UnLock();
 	return ret;
 }
@@ -4557,7 +4561,7 @@ BOOL CReserveManager::_IsEpgCap()
 			break;
 		}
 	}
-		 
+
 	return ret;
 }
 
@@ -4636,7 +4640,7 @@ BOOL CReserveManager::GetTVTestChgCh(
 	if( Lock(L"GetTVTestChgCh") == FALSE ) return FALSE;
 
 	BOOL ret = FALSE;
-	
+
 	WORD ONID = (WORD)((chID&0x0000FFFF00000000)>>32);
 	WORD SID = (WORD)((chID&0x00000000FFFF0000)>>16);
 	WORD TSID = (WORD)((chID&0x000000000000FFFF));

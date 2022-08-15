@@ -16,6 +16,7 @@ IMPLEMENT_DYNAMIC(CSetDlgBasic, CDialog)
 CSetDlgBasic::CSetDlgBasic(CWnd* pParent /*=NULL*/)
 	: CDialog(CSetDlgBasic::IDD, pParent)
 	, settingFolderPath(_T(""))
+	, epgFolderPath(_T(""))
 	, recFolderPath(_T(""))
 {
 
@@ -29,6 +30,7 @@ void CSetDlgBasic::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	DDX_Text(pDX, IDC_EDIT_SET_PATH, settingFolderPath);
+	DDX_Text(pDX, IDC_EDIT_SET_EPG_PATH, epgFolderPath);
 	DDX_Text(pDX, IDC_EDIT_REC_FOLDER, recFolderPath);
 	DDX_Control(pDX, IDC_LIST_REC_FOLDER, recFolderList);
 }
@@ -41,6 +43,7 @@ BEGIN_MESSAGE_MAP(CSetDlgBasic, CDialog)
 	ON_BN_CLICKED(IDC_BUTTON_REC_UP, &CSetDlgBasic::OnBnClickedButtonRecUp)
 	ON_BN_CLICKED(IDC_BUTTON_REC_DOWN, &CSetDlgBasic::OnBnClickedButtonRecDown)
 	ON_BN_CLICKED(IDC_BUTTON_SET_PATH, &CSetDlgBasic::OnBnClickedButtonSetPath)
+	ON_BN_CLICKED(IDC_BUTTON_SET_EPG_PATH, &CSetDlgBasic::OnBnClickedButtonSetEpgPath)
 END_MESSAGE_MAP()
 
 
@@ -53,6 +56,9 @@ BOOL CSetDlgBasic::OnInitDialog()
 	wstring path;
 	GetSettingPath(path);
 	settingFolderPath = path.c_str();
+
+	GetEpgSavePath(path,true);
+	epgFolderPath = path.c_str();
 
 	int iNum = GetPrivateProfileInt( L"SET", L"RecFolderNum", 0, commonIniPath );
 	if( iNum == 0 ){
@@ -78,6 +84,7 @@ void CSetDlgBasic::SaveIni()
 {
 	UpdateData(TRUE);
 	WritePrivateProfileString(L"SET", L"DataSavePath", settingFolderPath.GetBuffer(0), commonIniPath);
+	WritePrivateProfileString(L"SET", L"DataSavePath_EPG", epgFolderPath.Trim().GetBuffer(0), commonIniPath);
 	_CreateDirectory(settingFolderPath);
 
 	int iNum = recFolderList.GetCount();
@@ -113,7 +120,7 @@ void CSetDlgBasic::OnBnClickedButtonRecPath()
 		return;
 	}
 	if( recFolderPath.IsEmpty() != 0 ){
-		if (!SUCCEEDED(SHGetSpecialFolderLocation( m_hWnd,CSIDL_DESKTOP,&pidlRoot ) )){ 
+		if (!SUCCEEDED(SHGetSpecialFolderLocation( m_hWnd,CSIDL_DESKTOP,&pidlRoot ) )){
 			lpMalloc->Free(lpBuffer);
 			return;
 		}
@@ -128,18 +135,18 @@ void CSetDlgBasic::OnBnClickedButtonRecPath()
 	bi.lParam = (LPARAM)recFolderPath.GetBuffer(0);
 
 	pidlBrowse = SHBrowseForFolder(&bi);
-	if (pidlBrowse != NULL) {  
+	if (pidlBrowse != NULL) {
 		if (SHGetPathFromIDList(pidlBrowse, lpBuffer)) {
 			recFolderPath = lpBuffer;
 		}
 		lpMalloc->Free(pidlBrowse);
 	}
 	if( pidlRoot != NULL ){
-		lpMalloc->Free(pidlRoot); 
+		lpMalloc->Free(pidlRoot);
 	}
 	lpMalloc->Free(lpBuffer);
 	lpMalloc->Release();
-	
+
 	UpdateData(FALSE);
 }
 
@@ -235,7 +242,7 @@ void CSetDlgBasic::OnBnClickedButtonSetPath()
 		return;
 	}
 	if( settingFolderPath.IsEmpty() != 0 ){
-		if (!SUCCEEDED(SHGetSpecialFolderLocation( m_hWnd,CSIDL_DESKTOP,&pidlRoot ) )){ 
+		if (!SUCCEEDED(SHGetSpecialFolderLocation( m_hWnd,CSIDL_DESKTOP,&pidlRoot ) )){
 			lpMalloc->Free(lpBuffer);
 			return;
 		}
@@ -250,18 +257,67 @@ void CSetDlgBasic::OnBnClickedButtonSetPath()
 	bi.lParam = (LPARAM)settingFolderPath.GetBuffer(0);
 
 	pidlBrowse = SHBrowseForFolder(&bi);
-	if (pidlBrowse != NULL) {  
+	if (pidlBrowse != NULL) {
 		if (SHGetPathFromIDList(pidlBrowse, lpBuffer)) {
 			settingFolderPath = lpBuffer;
 		}
 		lpMalloc->Free(pidlBrowse);
 	}
 	if( pidlRoot != NULL ){
-		lpMalloc->Free(pidlRoot); 
+		lpMalloc->Free(pidlRoot);
 	}
 	lpMalloc->Free(lpBuffer);
 	lpMalloc->Release();
-	
+
+	UpdateData(FALSE);
+}
+
+
+void CSetDlgBasic::OnBnClickedButtonSetEpgPath()
+{
+	// TODO: ここにコントロール通知ハンドラー コードを追加します。
+	UpdateData(TRUE);
+
+	BROWSEINFO bi;
+	LPWSTR lpBuffer;
+	LPITEMIDLIST pidlRoot = NULL;
+	LPITEMIDLIST pidlBrowse;
+	LPMALLOC lpMalloc = NULL;
+
+	HRESULT hr = SHGetMalloc(&lpMalloc);
+	if (FAILED(hr)) return;
+
+	if ((lpBuffer = (LPWSTR)lpMalloc->Alloc(_MAX_PATH * 2)) == NULL) {
+		return;
+	}
+	if (epgFolderPath.IsEmpty() != 0) {
+		if (!SUCCEEDED(SHGetSpecialFolderLocation(m_hWnd, CSIDL_DESKTOP, &pidlRoot))) {
+			lpMalloc->Free(lpBuffer);
+			return;
+		}
+	}
+
+	bi.hwndOwner = m_hWnd;
+	bi.pidlRoot = pidlRoot;
+	bi.pszDisplayName = lpBuffer;
+	bi.lpszTitle = L"EPG関係保存フォルダを選択してください";
+	bi.ulFlags = 0;
+	bi.lpfn = NULL;
+	bi.lParam = (LPARAM)epgFolderPath.GetBuffer(0);
+
+	pidlBrowse = SHBrowseForFolder(&bi);
+	if (pidlBrowse != NULL) {
+		if (SHGetPathFromIDList(pidlBrowse, lpBuffer)) {
+			epgFolderPath = lpBuffer;
+		}
+		lpMalloc->Free(pidlBrowse);
+	}
+	if (pidlRoot != NULL) {
+		lpMalloc->Free(pidlRoot);
+	}
+	lpMalloc->Free(lpBuffer);
+	lpMalloc->Release();
+
 	UpdateData(FALSE);
 }
 
