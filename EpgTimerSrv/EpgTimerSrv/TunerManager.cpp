@@ -179,8 +179,9 @@ BOOL CTunerManager::GetNotSupportServiceTuner(
 		multimap<LONGLONG, CH_DATA4>::iterator itrCh;
 		LONGLONG key = _Create64Key(ONID, TSID, SID);
 		itrCh = itr->second->chUtil.chList.find(key);
-		if( itrCh == itr->second->chUtil.chList.end() ){
-			idList->push_back(itr->first);
+		if( itrCh == itr->second->chUtil.chList.end() ||
+			!itrCh->second.useViewFlag ){
+				idList->push_back(itr->first);
 		}
 
 	}
@@ -202,8 +203,9 @@ BOOL CTunerManager::GetSupportServiceTuner(
 		multimap<LONGLONG, CH_DATA4>::iterator itrCh;
 		LONGLONG key = _Create64Key(ONID, TSID, SID);
 		itrCh = itr->second->chUtil.chList.find(key);
-		if( itrCh != itr->second->chUtil.chList.end() ){
-			idList->push_back(itr->first);
+		if( itrCh != itr->second->chUtil.chList.end() &&
+			itrCh->second.useViewFlag ){
+				idList->push_back(itr->first);
 		}
 
 	}
