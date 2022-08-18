@@ -519,6 +519,8 @@ void CNWCoopManager::StartChkEpgFile(bool checkServerEpg)
 	}
 
 	this->chkEpgSrv = checkServerEpg ;
+	if(this->lastEpgFileTime==0LL)
+		this->UpdateLastEpgFileTime();
 
 	if( this->chkEpgThread == NULL ){
 		ResetEvent(this->chkEpgStopEvent);
