@@ -68,6 +68,8 @@ namespace EpgTimer
                 mutex.Close();
                 mutex = null;
 
+                restore_Icon();
+
                 closeFlag = true;
                 Close();
                 return;
@@ -1561,6 +1563,38 @@ namespace EpgTimer
         private void Window_ContentRendered(object sender, EventArgs e)
         {
             UpdateReserveData();
+        }
+
+        // ---- 二重起動した場合にアイコン化されたウィンドウを元に戻す処理 ----
+        //      (※ただし、タスクトレイに完全に格納されている場合は、無効)
+
+        private enum CmdShow : int {
+            SW_SHOWACTIVATE = 4,
+            SW_SHOW = 5
+        }
+
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+        [DllImport("user32.dll")]
+        private static extern bool ShowWindowAsync(IntPtr hWnd, CmdShow nCmdShow);
+        [DllImport("user32.dll")]
+        private static extern bool OpenIcon(IntPtr hWnd);
+
+        private void restore_Icon()
+        {
+            System.Diagnostics.Process cur_proc
+                = System.Diagnostics.Process.GetCurrentProcess();
+            System.Diagnostics.Process[] procs
+                = System.Diagnostics.Process.GetProcessesByName(cur_proc.ProcessName);
+
+            foreach( System.Diagnostics.Process proc in procs ) {
+                if ( proc.Id != cur_proc.Id) {
+                    IntPtr h = proc.MainWindowHandle ;
+                    if(h.Equals(IntPtr.Zero)) continue; // タスクトレイに隠れている
+                    ShowWindowAsync(h,CmdShow.SW_SHOWACTIVATE);
+                    OpenIcon(h); SetForegroundWindow(h);
+                }
+            }
         }
     }
 }
