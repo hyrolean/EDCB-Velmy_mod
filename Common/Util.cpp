@@ -1,14 +1,17 @@
 #include "stdafx.h"
 #include "Util.h"
 #include <aclapi.h>
+#include <Shlwapi.h>
 
 #pragma comment(lib, "advapi32.lib")
+#pragma comment(lib, "Shlwapi.lib")
+
 
 HANDLE _CreateEvent(BOOL bManualReset, BOOL bInitialState, LPCTSTR lpName)
 {
 	SECURITY_DESCRIPTOR sd;
 	SECURITY_ATTRIBUTES sa;
-	 
+
 	memset(&sd,0,sizeof(sd));
 	InitializeSecurityDescriptor(&sd,SECURITY_DESCRIPTOR_REVISION);
 	SetSecurityDescriptorDacl(&sd, TRUE, NULL, FALSE);
@@ -23,7 +26,7 @@ HANDLE _CreateMutex( BOOL bInitialOwner, LPCTSTR lpName )
 {
 	SECURITY_DESCRIPTOR sd;
 	SECURITY_ATTRIBUTES sa;
-	 
+
 	memset(&sd,0,sizeof(sd));
 	InitializeSecurityDescriptor(&sd,SECURITY_DESCRIPTOR_REVISION);
 	SetSecurityDescriptorDacl(&sd, TRUE, NULL, FALSE);
@@ -38,7 +41,7 @@ HANDLE _CreateFileMapping( HANDLE hFile, DWORD flProtect, DWORD dwMaximumSizeHig
 {
 	SECURITY_DESCRIPTOR sd;
 	SECURITY_ATTRIBUTES sa;
-	 
+
 	memset(&sd,0,sizeof(sd));
 	InitializeSecurityDescriptor(&sd,SECURITY_DESCRIPTOR_REVISION);
 	SetSecurityDescriptorDacl(&sd, TRUE, NULL, FALSE);
@@ -53,7 +56,7 @@ HANDLE _CreateNamedPipe( LPCTSTR lpName, DWORD dwOpenMode, DWORD dwPipeMode, DWO
 {
 	SECURITY_DESCRIPTOR sd;
 	SECURITY_ATTRIBUTES sa;
-	 
+
 	memset(&sd,0,sizeof(sd));
 	InitializeSecurityDescriptor(&sd,SECURITY_DESCRIPTOR_REVISION);
 	SetSecurityDescriptorDacl(&sd, TRUE, NULL, FALSE);
@@ -69,7 +72,7 @@ BOOL _CreateDirectory( LPCTSTR lpPathName )
 /*
 	SECURITY_DESCRIPTOR sd;
 	SECURITY_ATTRIBUTES sa;
-	 
+
 	memset(&sd,0,sizeof(sd));
 	InitializeSecurityDescriptor(&sd,SECURITY_DESCRIPTOR_REVISION);
 	SetSecurityDescriptorDacl(&sd, TRUE, NULL, FALSE);
@@ -100,7 +103,7 @@ BOOL _CreateDirectory( LPCTSTR lpPathName )
 		TCHAR szCreatePath[MAX_PATH+1] = _T("");
 		szCreatePath[0] = lpPathName[0];
 		szCreatePath[1] = lpPathName[1];
-		
+
 		for (int i = 2; i < (int)_tcslen(lpPathName); i++) {
 			szCreatePath[i] = lpPathName[i];
 			if (szCreatePath[i] == '\\') {
@@ -122,7 +125,7 @@ HANDLE _CreateFile( LPCTSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode
 {
 	SECURITY_DESCRIPTOR sd;
 	SECURITY_ATTRIBUTES sa;
-	 
+
 	memset(&sd,0,sizeof(sd));
 	InitializeSecurityDescriptor(&sd,SECURITY_DESCRIPTOR_REVISION);
 	SetSecurityDescriptorDacl(&sd, TRUE, NULL, FALSE);
@@ -186,6 +189,21 @@ HANDLE _CreateFile2( LPCTSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMod
 	return hFile;
 }
 
+BOOL TryMoveFile( LPCTSTR lpExistedFileName, LPCTSTR lpNewFileName, DWORD nTry)
+{
+	if(!PathFileExists(lpExistedFileName)) return FALSE;
+	if(PathFileExists(lpNewFileName)) return FALSE;
+
+	do  {
+		if(MoveFile(lpExistedFileName,lpNewFileName))
+			return TRUE ;
+		if(nTry) Sleep(1000);
+	} while(nTry--);
+
+	return FALSE;
+}
+
+
 BOOL _GetDiskFreeSpaceEx(
   LPCTSTR lpDirectoryName,                 // ディレクトリ名
   PULARGE_INTEGER lpFreeBytesAvailable,    // 呼び出し側が利用できるバイト数
@@ -195,7 +213,7 @@ BOOL _GetDiskFreeSpaceEx(
 {
 	if( lpFreeBytesAvailable == NULL ||
 		lpTotalNumberOfBytes == NULL ||
-		lpTotalNumberOfFreeBytes == NULL 
+		lpTotalNumberOfFreeBytes == NULL
 		){
 		return FALSE;
 	}

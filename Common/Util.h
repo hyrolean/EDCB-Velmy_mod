@@ -37,6 +37,10 @@ HANDLE _CreateMutex( BOOL bInitialOwner, LPCTSTR lpName );
 HANDLE _CreateFileMapping( HANDLE hFile, DWORD flProtect, DWORD dwMaximumSizeHigh, DWORD dwMaximumSizeLow, LPCTSTR lpName );
 HANDLE _CreateNamedPipe( LPCTSTR lpName, DWORD dwOpenMode, DWORD dwPipeMode, DWORD nMaxInstances, DWORD nOutBufferSize, DWORD nInBufferSize, DWORD nDefaultTimeOut );
 BOOL _CreateDirectory( LPCTSTR lpPathName );
+
+//再試行機能付きファイルの移動
+BOOL TryMoveFile( LPCTSTR lpExistedFileName, LPCTSTR lpNewFileName, DWORD nTry=0);
+
 //ボリュームのマウントを考慮して実ドライブの空きを取得する
 BOOL _GetDiskFreeSpaceEx(
   LPCTSTR lpDirectoryName,                 // ディレクトリ名

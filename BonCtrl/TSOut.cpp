@@ -72,7 +72,7 @@ BOOL CTSOut::Lock(LPCWSTR log, DWORD timeOut)
 	//	OutputDebugString(log);
 	//}
 	DWORD dwRet = WaitForSingleObject(this->lockEvent, timeOut);
-	if( dwRet == WAIT_ABANDONED || 
+	if( dwRet == WAIT_ABANDONED ||
 		dwRet == WAIT_FAILED ||
 		dwRet == WAIT_TIMEOUT){
 			if( log != NULL ){
@@ -205,7 +205,7 @@ DWORD CTSOut::AddTSBuff(TS_DATA* data)
 						//サイズが小さすぎる
 						continue;
 					}
-					if(packet.payload_unit_start_indicator == 1 && 
+					if(packet.payload_unit_start_indicator == 1 &&
 						packet.data_byte[0] == 0x00 &&
 						packet.data_byte[1] == 0x00 &&
 						packet.data_byte[2] == 0x01){
@@ -471,7 +471,7 @@ DWORD CTSOut::AddTSBuff(TS_DATA* data)
 		decodeData = this->decodeBuff;
 		decodeSize = this->deocdeBuffWriteSize;
 	}
-	
+
 	//デコード済みのデータを解析させる
 	try{
 		for( DWORD i=0; i<decodeSize; i+=188 ){
@@ -549,7 +549,7 @@ void CTSOut::CheckNeedPID()
 			pidName.insert(pair<WORD, string>(itrPID->first, name));
 		}
 		pidName.insert(pair<WORD, string>(itrPmt->second->PCR_PID, "PCR"));
-		
+
 	}
 
 	//EMMのPID
@@ -680,7 +680,13 @@ BOOL CTSOut::StopSaveEPG(
 	this->epgFile = NULL;
 
 	if( copy == TRUE ){
-		CopyFile(this->epgTempFilePath.c_str(), this->epgFilePath.c_str(), FALSE );
+		// NOTE: ファイルの差替処理は、一瞬で完了させる
+		auto bkFilePath = this->epgFilePath + L".bk";
+		const DWORD nTry = 15;
+		TryMoveFile(this->epgFilePath.c_str(),bkFilePath.c_str(),nTry);
+		if(!TryMoveFile(this->epgTempFilePath.c_str(), this->epgFilePath.c_str(),nTry))
+			TryMoveFile(bkFilePath.c_str(),this->epgFilePath.c_str(),nTry);
+		DeleteFile(bkFilePath.c_str());
 	}
 	DeleteFile(this->epgTempFilePath.c_str());
 

@@ -707,7 +707,9 @@ UINT WINAPI CNWCoopManager::ChkEpgThread(LPVOID param)
 					DWORD dataSize = 0;
 					DWORD err = sendCtrl.SendGetEpgFile2(chkingList[i], &data, &dataSize);
 					if( err == CMD_SUCCESS ){
-						file = _CreateFile2(filePath.c_str(), GENERIC_WRITE, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
+						auto tempFilePath = filePath + L".nw.tmp";
+						auto bkFilePath = filePath + L".nw.bk";
+						file = _CreateFile2(tempFilePath.c_str(), GENERIC_WRITE, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
 						if( file != INVALID_HANDLE_VALUE){
 							DWORD writeSize = 0;
 							WriteFile(file, data, dataSize, &writeSize, NULL);
@@ -716,9 +718,18 @@ UINT WINAPI CNWCoopManager::ChkEpgThread(LPVOID param)
 							LastWriteTime.dwLowDateTime = maxTime&0xFFFFFFFF ;
 							SetFileTime(file,NULL,NULL,&LastWriteTime); //最終更新時刻に設定
 							CloseHandle(file);
-							if(sys->lastEpgFileTime < maxTime)
-								sys->lastEpgFileTime = maxTime ;
-							chgFile = TRUE;
+							// NOTE: ファイルの差替処理は、一瞬で完了させる
+							const DWORD nTry=5;
+							TryMoveFile(filePath.c_str(),bkFilePath.c_str(),nTry);
+							if(!TryMoveFile(tempFilePath.c_str(),filePath.c_str(),nTry))
+								TryMoveFile(bkFilePath.c_str(),filePath.c_str(),nTry);
+							else {
+								if(sys->lastEpgFileTime < maxTime)
+									sys->lastEpgFileTime = maxTime ;
+								chgFile = TRUE;
+							}
+							DeleteFile(bkFilePath.c_str());
+							DeleteFile(tempFilePath.c_str());
 							_OutputDebugString(L"ip:%s port: %d のファイルでEPG更新：%s\r\n", srvIP.c_str(), srvPort, filePath.c_str());
 						}
 						SAFE_DELETE_ARRAY(data);
