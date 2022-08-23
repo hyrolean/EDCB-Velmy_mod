@@ -126,6 +126,17 @@ void GetEpgTimerSrvIniPath(wstring& strPath)
 	strPath += L"EpgTimerSrv.ini";
 }
 
+void GetEpgLocalSavePath(wstring& strPath)
+{
+	strPath = L"";
+
+	GetSettingPath(strPath);
+	if(strPath.empty())
+		GetDefSettingPath(strPath) ;
+
+	strPath += EPG_SAVE_FOLDER;
+}
+
 void GetEpgSavePath(wstring& strPath, bool iniValue)
 {
 	strPath = L"";
@@ -140,15 +151,20 @@ void GetEpgSavePath(wstring& strPath, bool iniValue)
 		return;
 	}
 
-	if(!wPath[0]) {
-		GetSettingPath(strPath);
-		if(strPath.empty())
-			GetDefSettingPath(strPath) ;
-		strPath += EPG_SAVE_FOLDER;
+	if(!wPath[0]||!PathIsDirectory(wPath)) {
+		GetEpgLocalSavePath(strPath);
 	}
 	else strPath = wPath;
 
 	ChkFolderPath(strPath);
+}
+
+BOOL IsEpgMirrorToLocal()
+{
+	wstring strIni = L"";
+	GetCommonIniPath(strIni);
+
+	return GetPrivateProfileInt( L"Set", L"MirrorToLocal_EPG", FALSE, strIni.c_str() );
 }
 
 void GetLogoSavePath(wstring& strPath)

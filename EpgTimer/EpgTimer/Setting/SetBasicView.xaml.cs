@@ -63,6 +63,9 @@ namespace EpgTimer.Setting
                 IniFileHandler.GetPrivateProfileString("SET", "DataSavePath_EPG", "", buff, 512, SettingPath.CommonIniPath);
                 textBox_setEpgPath.Text = buff.ToString();
 
+                checkBox_mirrorEpgToLocal.IsChecked =
+                    IniFileHandler.GetPrivateProfileInt("SET", "MirrorToLocal_EPG", 0, SettingPath.CommonIniPath) != 0 ? true : false ;
+
                 string defRecExe = System.IO.Path.GetDirectoryName(Environment.GetCommandLineArgs()[0]) + "\\EpgDataCap_Bon.exe";
                 buff.Clear();
                 IniFileHandler.GetPrivateProfileString("SET", "RecExePath", defRecExe, buff, 512, SettingPath.CommonIniPath);
@@ -280,6 +283,7 @@ namespace EpgTimer.Setting
 
                 IniFileHandler.WritePrivateProfileString("SET", "DataSavePath", textBox_setPath.Text, SettingPath.CommonIniPath);
                 IniFileHandler.WritePrivateProfileString("SET", "DataSavePath_EPG", textBox_setEpgPath.Text.Trim(), SettingPath.CommonIniPath);
+                IniFileHandler.WritePrivateProfileString("SET", "MirrorToLocal_EPG", checkBox_mirrorEpgToLocal.IsChecked==false?"0":"1", SettingPath.CommonIniPath);
                 IniFileHandler.WritePrivateProfileString("SET", "RecExePath", textBox_exe.Text, SettingPath.CommonIniPath);
                 IniFileHandler.WritePrivateProfileString("SET", "RecFolderNum", listBox_recFolder.Items.Count.ToString(), SettingPath.CommonIniPath);
                 for (int i = 0; i < listBox_recFolder.Items.Count; i++)

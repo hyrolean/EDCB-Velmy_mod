@@ -69,7 +69,7 @@ namespace EpgTimer
         private Thread _th = null;
         private System.Diagnostics.Stopwatch _sw = new System.Diagnostics.Stopwatch();
 
-        // 
+        //
         private void _BalloonTipShown(object sender, EventArgs e)
         {
             Debug.Print(notifyIcon.BalloonTipText);
@@ -261,14 +261,19 @@ namespace EpgTimer
                 if (mouseEvent.Button == MouseButtons.Left)
                 {
                     //左クリック
+                    Restore_();
+                }
+            }
+        }
+
+		public void Restore_()
+		{
                     if (targetWindow != null)
                     {
                         targetWindow.Show();
                         targetWindow.WindowState = LastViewState;
                         targetWindow.Activate();
                     }
-                }
-            }
-        }   
+		}
     }
 }

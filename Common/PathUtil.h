@@ -15,7 +15,11 @@ void GetCommonIniPath(wstring& strPath);
 
 void GetEpgTimerSrvIniPath(wstring& strPath);
 
+void GetEpgLocalSavePath(wstring& strPath);
+
 void GetEpgSavePath(wstring& strPath, bool iniValue=false);
+
+BOOL IsEpgMirrorToLocal();
 
 void GetLogoSavePath(wstring& strPath);
 

@@ -573,13 +573,22 @@ void CNWCoopManager::UpdateLastEpgFileTime()
 	chkingList = chkEpgFileList;
 	QueueUnLock();
 
+	//EpgDataクライアントパス
 	wstring folderPath = L"";
 	GetEpgSavePath(folderPath);
 	folderPath += L"\\";
 
+	//EpgDataローカルパス
+	BOOL mirrorToLocal = IsEpgMirrorToLocal();
+	wstring localFolderPath = L"";
+	GetEpgLocalSavePath(localFolderPath);
+	localFolderPath += L"\\";
+
+	if(localFolderPath==folderPath) mirrorToLocal = FALSE ;
+
 	for( size_t i=0; i<chkingList.size(); i++ ){
-		//ローカルファイルのタイムスタンプ確認
-		LONGLONG localFileTime = 0;
+		//クライアントファイルのタイムスタンプ確認
+		LONGLONG fileTime = 0;
 		wstring filePath = folderPath;
 		filePath += chkingList[i];
 
@@ -590,12 +599,12 @@ void CNWCoopManager::UpdateLastEpgFileTime()
 			FILETIME LastWriteTime;
 			GetFileTime(file, &CreationTime, &LastAccessTime, &LastWriteTime);
 
-			localFileTime = ((LONGLONG)LastWriteTime.dwHighDateTime)<<32 | (LONGLONG)LastWriteTime.dwLowDateTime;
+			fileTime = ((LONGLONG)LastWriteTime.dwHighDateTime)<<32 | (LONGLONG)LastWriteTime.dwLowDateTime;
 			CloseHandle(file);
 
-				// MARK : ローカルファイルのEPG最新日付チェック
-				if(lastEpgFileTime<localFileTime) {
-					lastEpgFileTime = localFileTime ;
+				// MARK : クライアントファイルのEPG最新日付チェック
+				if(lastEpgFileTime<fileTime) {
+					lastEpgFileTime = fileTime ;
 				}
 
 		}else{
@@ -603,6 +612,33 @@ void CNWCoopManager::UpdateLastEpgFileTime()
 				continue;
 			}
 		}
+
+		// NOTE : ローカルに、更新のあったepgファイルのミラーを連動作成
+		if(mirrorToLocal && fileTime>0LL) {
+
+			auto localFilePath = localFolderPath + chkingList[i] ;
+			LONGLONG localFileTime = 0LL ; BOOL existFail = FALSE ;
+
+			HANDLE localFile = _CreateFile(localFilePath.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL );
+			if( localFile != INVALID_HANDLE_VALUE){
+				FILETIME LastWriteTime;
+				GetFileTime(localFile, NULL, NULL, &LastWriteTime);
+
+				localFileTime = ((LONGLONG)LastWriteTime.dwHighDateTime)<<32 | (LONGLONG)LastWriteTime.dwLowDateTime;
+				CloseHandle(localFile);
+
+			}else if( GetLastError() == ERROR_FILE_NOT_FOUND )
+				existFail = TRUE ;
+			else
+				localFileTime = fileTime ;
+
+			if(fileTime > localFileTime) {
+				_CreateDirectory(localFolderPath.c_str());
+				CopyFile(filePath.c_str(),localFilePath.c_str(),existFail);
+			}
+
+		}
+
 	}
 }
 
@@ -631,9 +667,18 @@ UINT WINAPI CNWCoopManager::ChkEpgThread(LPVOID param)
 			return 0;
 		}
 
+		//EpgDataクライアントパス
 		wstring folderPath = L"";
 		GetEpgSavePath(folderPath);
 		folderPath += L"\\";
+
+		//EpgDataローカルパス
+		BOOL mirrorToLocal = IsEpgMirrorToLocal();
+		wstring localFolderPath = L"";
+		GetEpgLocalSavePath(localFolderPath);
+		localFolderPath += L"\\";
+
+		if(localFolderPath==folderPath) mirrorToLocal = FALSE ;
 
 		BOOL chgFile = FALSE;
 		for( size_t i=0; i<chkingList.size(); i++ ){
@@ -641,8 +686,8 @@ UINT WINAPI CNWCoopManager::ChkEpgThread(LPVOID param)
 				//キャンセルされた
 				return 0;
 			}
-			//ローカルファイルのタイムスタンプ確認
-			LONGLONG localFileTime = 0;
+			//クライアントファイルのタイムスタンプ確認
+			LONGLONG fileTime = 0;
 			wstring filePath = folderPath;
 			filePath += chkingList[i];
 
@@ -653,12 +698,12 @@ UINT WINAPI CNWCoopManager::ChkEpgThread(LPVOID param)
 				FILETIME LastWriteTime;
 				GetFileTime(file, &CreationTime, &LastAccessTime, &LastWriteTime);
 
-				localFileTime = ((LONGLONG)LastWriteTime.dwHighDateTime)<<32 | (LONGLONG)LastWriteTime.dwLowDateTime;
+				fileTime = ((LONGLONG)LastWriteTime.dwHighDateTime)<<32 | (LONGLONG)LastWriteTime.dwLowDateTime;
 				CloseHandle(file);
 
-					// MARK : ローカルファイルのEPG最新日付チェック
-					if(sys->lastEpgFileTime+60*60*I64_1SEC<localFileTime) {
-						sys->lastEpgFileTime = localFileTime ;
+					// MARK : クライアントファイルのEPG最新日付チェック
+					if(sys->lastEpgFileTime+60*60*I64_1SEC<fileTime) {
+						sys->lastEpgFileTime = fileTime ;
 						chgFile = TRUE ;
 					}
 
@@ -688,17 +733,17 @@ UINT WINAPI CNWCoopManager::ChkEpgThread(LPVOID param)
 					sendCtrl.SetNWSetting(ip, itr->second.srvPort);
 					sendCtrl.SetConnectTimeOut(15*1000);
 
-					LONGLONG fileTime = 0;
-					DWORD err = sendCtrl.SendGetEpgFileTime2(chkingList[i], &fileTime);
+					LONGLONG serverFileTime = 0;
+					DWORD err = sendCtrl.SendGetEpgFileTime2(chkingList[i], &serverFileTime);
 					if( err == CMD_SUCCESS ){
-						if( maxTime < fileTime ){
+						if( maxTime < serverFileTime ){
 							srvIP = ip;
 							srvPort = itr->second.srvPort;
-							maxTime = fileTime;
+							maxTime = serverFileTime;
 						}
 					}
 				}
-				if( maxTime > 0 && maxTime > (localFileTime + 60*60*I64_1SEC)){
+				if( maxTime > 0 && maxTime > (fileTime + 60*60*I64_1SEC)){
 					//1時間以上新しいファイルなので取得する
 					sendCtrl.SetNWSetting(srvIP, srvPort);
 					sendCtrl.SetConnectTimeOut(15*1000);
@@ -726,6 +771,7 @@ UINT WINAPI CNWCoopManager::ChkEpgThread(LPVOID param)
 							else {
 								if(sys->lastEpgFileTime < maxTime)
 									sys->lastEpgFileTime = maxTime ;
+								fileTime = maxTime ;
 								chgFile = TRUE;
 							}
 							DeleteFile(bkFilePath.c_str());
@@ -736,8 +782,35 @@ UINT WINAPI CNWCoopManager::ChkEpgThread(LPVOID param)
 					}
 				}
 			}
+
+			// NOTE : ローカルに、更新のあったepgファイルのミラーを連動作成
+			if(mirrorToLocal && fileTime>0LL) {
+
+				auto localFilePath = localFolderPath + chkingList[i] ;
+				LONGLONG localFileTime = 0LL ; BOOL existFail = FALSE ;
+
+				HANDLE localFile = _CreateFile(localFilePath.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL );
+				if( localFile != INVALID_HANDLE_VALUE){
+					FILETIME LastWriteTime;
+					GetFileTime(localFile, NULL, NULL, &LastWriteTime);
+
+					localFileTime = ((LONGLONG)LastWriteTime.dwHighDateTime)<<32 | (LONGLONG)LastWriteTime.dwLowDateTime;
+					CloseHandle(localFile);
+
+				}else if( GetLastError() == ERROR_FILE_NOT_FOUND )
+					existFail = TRUE ;
+				else
+					localFileTime = fileTime ;
+
+				if(fileTime > localFileTime) {
+					_CreateDirectory(localFolderPath.c_str());
+					CopyFile(filePath.c_str(),localFilePath.c_str(),existFail);
+				}
+
+			}
+
 		}
-		if( chgFile == TRUE ){
+		if(chgFile){
 			sys->updateEpgData = TRUE;
 		}
 		wait = 10*60*1000;

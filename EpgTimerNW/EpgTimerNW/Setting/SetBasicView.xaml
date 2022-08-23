@@ -20,7 +20,8 @@
                     <Label Content="EPG関係保存フォルダ" Height="28" HorizontalAlignment="Left" Margin="12,45,0,0" Name="label1_Epg" VerticalAlignment="Top" />
                     <TextBox Height="24" HorizontalAlignment="Left" Margin="158,45,0,0" Name="textBox_setEpgPath" VerticalAlignment="Top" Width="372" />
                     <Button Content="開く" Height="23" HorizontalAlignment="Left" Margin="535,46,0,0" Name="button_setEpgPath" VerticalAlignment="Top" Width="44" Click="button_setEpgPath_Click" Style="{StaticResource ButtonStyle1}" />
-                    <Label Content="※ 空欄の場合は、設定関係保存フォルダの直下EpgDataフォルダに保存されます。" Height="28" HorizontalAlignment="Left" Margin="157,74,0,0" x:Name="label5_Copy" VerticalAlignment="Top" />
+                    <CheckBox Content="ローカルミラーリング" Height="16" HorizontalAlignment="Left" Margin="587,50,0,0" x:Name="checkBox_mirrorEpgToLocal" VerticalAlignment="Top" />
+                    <Label Content="※ 空欄の場合は、設定関係保存フォルダの直下EpgDataフォルダ(ローカル)に保存されます。" Height="28" HorizontalAlignment="Left" Margin="157,74,0,0" x:Name="label5_Copy" VerticalAlignment="Top" />
                     <Label Content="録画用アプリのexe" Height="28" HorizontalAlignment="Left" Margin="12,113,0,0" Name="label2" VerticalAlignment="Top" />
                     <TextBox Height="24" HorizontalAlignment="Left" Margin="157,117,0,0" Name="textBox_exe" VerticalAlignment="Top" Width="372" ToolTip="{Binding ElementName=textBox_exe, Path=Text}" IsEnabled="False" />
                     <Button Content="開く" Height="23" HorizontalAlignment="Left" Margin="535,117,0,0" Name="button_exe" VerticalAlignment="Top" Width="44" Click="button_exe_Click" Style="{StaticResource ButtonStyle1}" IsEnabled="False" />
