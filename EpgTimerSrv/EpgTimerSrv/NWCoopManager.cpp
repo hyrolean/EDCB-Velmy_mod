@@ -562,15 +562,16 @@ BOOL CNWCoopManager::IsUpdateEpgData()
 	return ret;
 }
 
-void CNWCoopManager::UpdateLastEpgFileTime()
+BOOL CNWCoopManager::UpdateLastEpgFileTime(LONGLONG updateDelay, CSendCtrlCmd *sendCtrl, bool *stopped)
 {
 	if( QueueLock() == FALSE ) {
 		//Epg更新日時を現時刻に設定
 		lastEpgFileTime = GetNowI64Time() ;
-		return;
+		return FALSE;
 	}
-	vector<wstring> chkingList;
-	chkingList = chkEpgFileList;
+	vector<wstring> chkingList = this->chkEpgFileList;
+	map<DWORD, COOP_SERVER_INFO> srvList;
+	if(sendCtrl) srvList = this->srvList;
 	QueueUnLock();
 
 	//EpgDataクライアントパス
@@ -586,7 +587,15 @@ void CNWCoopManager::UpdateLastEpgFileTime()
 
 	if(localFolderPath==folderPath) mirrorToLocal = FALSE ;
 
+	BOOL chgFile = FALSE;
 	for( size_t i=0; i<chkingList.size(); i++ ){
+		if(stopped) {
+			if( ::WaitForSingleObject(this->chkEpgStopEvent, 0) != WAIT_TIMEOUT ){
+				//キャンセルされた
+				*stopped = true ;
+				return chgFile;
+			}
+		}
 		//クライアントファイルのタイムスタンプ確認
 		LONGLONG fileTime = 0;
 		wstring filePath = folderPath;
@@ -594,22 +603,96 @@ void CNWCoopManager::UpdateLastEpgFileTime()
 
 		HANDLE file = _CreateFile(filePath.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL );
 		if( file != INVALID_HANDLE_VALUE){
-			FILETIME CreationTime;
-			FILETIME LastAccessTime;
+			//FILETIME CreationTime;
+			//FILETIME LastAccessTime;
 			FILETIME LastWriteTime;
-			GetFileTime(file, &CreationTime, &LastAccessTime, &LastWriteTime);
+			GetFileTime(file, /*&CreationTime*/NULL, /*&LastAccessTime*/NULL, &LastWriteTime);
 
 			fileTime = ((LONGLONG)LastWriteTime.dwHighDateTime)<<32 | (LONGLONG)LastWriteTime.dwLowDateTime;
 			CloseHandle(file);
 
 				// MARK : クライアントファイルのEPG最新日付チェック
-				if(lastEpgFileTime<fileTime) {
+				if(lastEpgFileTime+updateDelay<fileTime) {
 					lastEpgFileTime = fileTime ;
+					chgFile = TRUE;
 				}
 
 		}else{
 			if( GetLastError() != ERROR_FILE_NOT_FOUND ){
 				continue;
+			}
+		}
+
+		//サーバーのタイムスタンプ確認
+		if(sendCtrl) {
+			wstring srvIP = L"";
+			WORD srvPort = 0;
+			LONGLONG maxTime = 0;
+			map<DWORD, COOP_SERVER_INFO>::iterator itr;
+			for( itr = srvList.begin(); itr != srvList.end(); itr++){
+				if(stopped) {
+					if( ::WaitForSingleObject(this->chkEpgStopEvent, 0) != WAIT_TIMEOUT ){
+						//キャンセルされた
+						*stopped = true ;
+						return chgFile;
+					}
+				}
+				sendCtrl->SetSendMode(TRUE);
+				wstring ip;
+				if( this->GetIP2Host(itr->second.hostName, ip) == FALSE){
+					continue;
+				}
+				_OutputDebugString(L"++CNWCoopManager EPGChk ip %s\r\n", ip.c_str());
+				sendCtrl->SetNWSetting(ip, itr->second.srvPort);
+				sendCtrl->SetConnectTimeOut(15*1000);
+
+				LONGLONG serverFileTime = 0;
+				DWORD err = sendCtrl->SendGetEpgFileTime2(chkingList[i], &serverFileTime);
+				if( err == CMD_SUCCESS ){
+					if( maxTime < serverFileTime ){
+						srvIP = ip;
+						srvPort = itr->second.srvPort;
+						maxTime = serverFileTime;
+					}
+				}
+			}
+			if( maxTime > 0 && maxTime > (fileTime + updateDelay)){
+				//1時間以上新しいファイルなので取得する
+				sendCtrl->SetNWSetting(srvIP, srvPort);
+				sendCtrl->SetConnectTimeOut(15*1000);
+
+				BYTE* data = NULL;
+				DWORD dataSize = 0;
+				DWORD err = sendCtrl->SendGetEpgFile2(chkingList[i], &data, &dataSize);
+				if( err == CMD_SUCCESS ){
+					auto tempFilePath = filePath + L".nw.tmp";
+					auto bkFilePath = filePath + L".nw.bk";
+					file = _CreateFile2(tempFilePath.c_str(), GENERIC_WRITE, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
+					if( file != INVALID_HANDLE_VALUE){
+						DWORD writeSize = 0;
+						WriteFile(file, data, dataSize, &writeSize, NULL);
+						FILETIME LastWriteTime;
+						LastWriteTime.dwHighDateTime = (ULONGLONG)maxTime>>32 ;
+						LastWriteTime.dwLowDateTime = maxTime&0xFFFFFFFF ;
+						SetFileTime(file,NULL,NULL,&LastWriteTime); //最終更新時刻に設定
+						CloseHandle(file);
+						// NOTE: ファイルの差替処理は、一瞬で完了させる
+						const DWORD nTry=5;
+						TryMoveFile(filePath.c_str(),bkFilePath.c_str(),nTry);
+						if(!TryMoveFile(tempFilePath.c_str(),filePath.c_str(),nTry))
+							TryMoveFile(bkFilePath.c_str(),filePath.c_str(),nTry);
+						else {
+							if(this->lastEpgFileTime < maxTime)
+								this->lastEpgFileTime = maxTime ;
+							fileTime = maxTime ;
+							chgFile = TRUE;
+						}
+						DeleteFile(bkFilePath.c_str());
+						DeleteFile(tempFilePath.c_str());
+						_OutputDebugString(L"ip:%s port: %d のファイルでEPG更新：%s\r\n", srvIP.c_str(), srvPort, filePath.c_str());
+					}
+					SAFE_DELETE_ARRAY(data);
+				}
 			}
 		}
 
@@ -632,7 +715,7 @@ void CNWCoopManager::UpdateLastEpgFileTime()
 			else
 				localFileTime = fileTime ;
 
-			if(fileTime > localFileTime) {
+			if(fileTime > localFileTime+updateDelay) {
 				_CreateDirectory(localFolderPath.c_str());
 				CopyFile(filePath.c_str(),localFilePath.c_str(),existFail);
 			}
@@ -640,177 +723,21 @@ void CNWCoopManager::UpdateLastEpgFileTime()
 		}
 
 	}
+
+	return chgFile ;
 }
 
 UINT WINAPI CNWCoopManager::ChkEpgThread(LPVOID param)
 {
 	CNWCoopManager* sys = (CNWCoopManager*)param;
 	CSendCtrlCmd sendCtrl;
-	map<DWORD,DWORD>::iterator itr;
 	DWORD wait = 0;
-	while(1){
+	bool stopped = false ;
+	while(!stopped){
 		if( ::WaitForSingleObject(sys->chkEpgStopEvent, wait) != WAIT_TIMEOUT ){
 			//キャンセルされた
-			break;
-		}
-		vector<wstring> chkingList;
-		map<DWORD, COOP_SERVER_INFO> srvList;
-
-		//現在の情報取得
-		if( sys->QueueLock() == FALSE ) return 0;
-		srvList = sys->srvList;
-		chkingList = sys->chkEpgFileList;
-		sys->QueueUnLock();
-
-		if( chkingList.size() == 0) {
-			//リストないので終了
-			return 0;
-		}
-
-		//EpgDataクライアントパス
-		wstring folderPath = L"";
-		GetEpgSavePath(folderPath);
-		folderPath += L"\\";
-
-		//EpgDataローカルパス
-		BOOL mirrorToLocal = IsEpgMirrorToLocal();
-		wstring localFolderPath = L"";
-		GetEpgLocalSavePath(localFolderPath);
-		localFolderPath += L"\\";
-
-		if(localFolderPath==folderPath) mirrorToLocal = FALSE ;
-
-		BOOL chgFile = FALSE;
-		for( size_t i=0; i<chkingList.size(); i++ ){
-			if( ::WaitForSingleObject(sys->chkEpgStopEvent, 0) != WAIT_TIMEOUT ){
-				//キャンセルされた
-				return 0;
-			}
-			//クライアントファイルのタイムスタンプ確認
-			LONGLONG fileTime = 0;
-			wstring filePath = folderPath;
-			filePath += chkingList[i];
-
-			HANDLE file = _CreateFile(filePath.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL );
-			if( file != INVALID_HANDLE_VALUE){
-				FILETIME CreationTime;
-				FILETIME LastAccessTime;
-				FILETIME LastWriteTime;
-				GetFileTime(file, &CreationTime, &LastAccessTime, &LastWriteTime);
-
-				fileTime = ((LONGLONG)LastWriteTime.dwHighDateTime)<<32 | (LONGLONG)LastWriteTime.dwLowDateTime;
-				CloseHandle(file);
-
-					// MARK : クライアントファイルのEPG最新日付チェック
-					if(sys->lastEpgFileTime+60*60*I64_1SEC<fileTime) {
-						sys->lastEpgFileTime = fileTime ;
-						chgFile = TRUE ;
-					}
-
-			}else{
-				if( GetLastError() != ERROR_FILE_NOT_FOUND ){
-					continue;
-				}
-			}
-
-			//サーバーのタイムスタンプ確認
-			if(sys->chkEpgSrv && !srvList.empty()) {
-				wstring srvIP = L"";
-				WORD srvPort = 0;
-				LONGLONG maxTime = 0;
-				map<DWORD, COOP_SERVER_INFO>::iterator itr;
-				for( itr = srvList.begin(); itr != srvList.end(); itr++){
-					if( ::WaitForSingleObject(sys->chkEpgStopEvent, 0) != WAIT_TIMEOUT ){
-						//キャンセルされた
-						return 0;
-					}
-					sendCtrl.SetSendMode(TRUE);
-					wstring ip;
-					if( sys->GetIP2Host(itr->second.hostName, ip) == FALSE){
-						continue;
-					}
-					_OutputDebugString(L"++CNWCoopManager EPGChk ip %s\r\n", ip.c_str());
-					sendCtrl.SetNWSetting(ip, itr->second.srvPort);
-					sendCtrl.SetConnectTimeOut(15*1000);
-
-					LONGLONG serverFileTime = 0;
-					DWORD err = sendCtrl.SendGetEpgFileTime2(chkingList[i], &serverFileTime);
-					if( err == CMD_SUCCESS ){
-						if( maxTime < serverFileTime ){
-							srvIP = ip;
-							srvPort = itr->second.srvPort;
-							maxTime = serverFileTime;
-						}
-					}
-				}
-				if( maxTime > 0 && maxTime > (fileTime + 60*60*I64_1SEC)){
-					//1時間以上新しいファイルなので取得する
-					sendCtrl.SetNWSetting(srvIP, srvPort);
-					sendCtrl.SetConnectTimeOut(15*1000);
-
-					BYTE* data = NULL;
-					DWORD dataSize = 0;
-					DWORD err = sendCtrl.SendGetEpgFile2(chkingList[i], &data, &dataSize);
-					if( err == CMD_SUCCESS ){
-						auto tempFilePath = filePath + L".nw.tmp";
-						auto bkFilePath = filePath + L".nw.bk";
-						file = _CreateFile2(tempFilePath.c_str(), GENERIC_WRITE, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
-						if( file != INVALID_HANDLE_VALUE){
-							DWORD writeSize = 0;
-							WriteFile(file, data, dataSize, &writeSize, NULL);
-							FILETIME LastWriteTime;
-							LastWriteTime.dwHighDateTime = (ULONGLONG)maxTime>>32 ;
-							LastWriteTime.dwLowDateTime = maxTime&0xFFFFFFFF ;
-							SetFileTime(file,NULL,NULL,&LastWriteTime); //最終更新時刻に設定
-							CloseHandle(file);
-							// NOTE: ファイルの差替処理は、一瞬で完了させる
-							const DWORD nTry=5;
-							TryMoveFile(filePath.c_str(),bkFilePath.c_str(),nTry);
-							if(!TryMoveFile(tempFilePath.c_str(),filePath.c_str(),nTry))
-								TryMoveFile(bkFilePath.c_str(),filePath.c_str(),nTry);
-							else {
-								if(sys->lastEpgFileTime < maxTime)
-									sys->lastEpgFileTime = maxTime ;
-								fileTime = maxTime ;
-								chgFile = TRUE;
-							}
-							DeleteFile(bkFilePath.c_str());
-							DeleteFile(tempFilePath.c_str());
-							_OutputDebugString(L"ip:%s port: %d のファイルでEPG更新：%s\r\n", srvIP.c_str(), srvPort, filePath.c_str());
-						}
-						SAFE_DELETE_ARRAY(data);
-					}
-				}
-			}
-
-			// NOTE : ローカルに、更新のあったepgファイルのミラーを連動作成
-			if(mirrorToLocal && fileTime>0LL) {
-
-				auto localFilePath = localFolderPath + chkingList[i] ;
-				LONGLONG localFileTime = 0LL ; BOOL existFail = FALSE ;
-
-				HANDLE localFile = _CreateFile(localFilePath.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL );
-				if( localFile != INVALID_HANDLE_VALUE){
-					FILETIME LastWriteTime;
-					GetFileTime(localFile, NULL, NULL, &LastWriteTime);
-
-					localFileTime = ((LONGLONG)LastWriteTime.dwHighDateTime)<<32 | (LONGLONG)LastWriteTime.dwLowDateTime;
-					CloseHandle(localFile);
-
-				}else if( GetLastError() == ERROR_FILE_NOT_FOUND )
-					existFail = TRUE ;
-				else
-					localFileTime = fileTime ;
-
-				if(fileTime > localFileTime) {
-					_CreateDirectory(localFolderPath.c_str());
-					CopyFile(filePath.c_str(),localFilePath.c_str(),existFail);
-				}
-
-			}
-
-		}
-		if(chgFile){
+			stopped=true;
+		}else if(sys->UpdateLastEpgFileTime(60*60*I64_1SEC,sys->chkEpgSrv?&sendCtrl:NULL,&stopped)){
 			sys->updateEpgData = TRUE;
 		}
 		wait = 10*60*1000;
