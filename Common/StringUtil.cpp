@@ -1,5 +1,28 @@
 #include "stdafx.h"
+#include <Rpc.h>
 #include "StringUtil.h"
+
+#pragma comment(lib, "Rpcrt4.lib")
+
+void UuidString(string& strOut)
+{
+  UUID uuid_ ;
+  UuidCreate(&uuid_) ;
+  unsigned char* result ;
+  UuidToStringA(&uuid_,&result) ;
+  strOut = (char*)result ;
+  RpcStringFreeA(&result);
+}
+
+void UuidString(wstring& strOut)
+{
+  UUID uuid_ ;
+  UuidCreate(&uuid_) ;
+  RPC_WSTR result ;
+  UuidToStringW(&uuid_,&result) ;
+  strOut = (wchar_t*)result ;
+  RpcStringFreeW(&result);
+}
 
 void Format(string& strBuff, const char *format, ...)
 {
@@ -76,7 +99,7 @@ void WtoA(wstring strIn, string& strOut)
 	ZeroMemory(pszBuff, sizeof(char)*(iLen+1));
 	WideCharToMultiByte( 932, 0, strIn.c_str(), -1, pszBuff, iLen, NULL, NULL );
 	strOut = pszBuff;
-	
+
 	delete[] pszBuff;
 }
 
@@ -92,7 +115,7 @@ void WtoUTF8(wstring strIn, string& strOut)
 	ZeroMemory(pszBuff, sizeof(char)*(iLen+1));
 	WideCharToMultiByte( CP_UTF8, 0, strIn.c_str(), -1, pszBuff, iLen, NULL, NULL );
 	strOut = pszBuff;
-	
+
 	delete[] pszBuff;
 }
 
@@ -108,7 +131,7 @@ void AtoW(string strIn, wstring& strOut)
 	MultiByteToWideChar( 932, 0, strIn.c_str(), -1, pwszBuff, iLen );
 
 	strOut = pwszBuff;
-	
+
 	delete[] pwszBuff;
 }
 
@@ -124,7 +147,7 @@ void UTF8toW(string strIn, wstring& strOut)
 	MultiByteToWideChar( CP_UTF8, 0, strIn.c_str(), -1, pwszBuff, iLen );
 
 	strOut = pwszBuff;
-	
+
 	delete[] pwszBuff;
 }
 
@@ -135,7 +158,7 @@ BOOL Separate(string strIn, string strSep, string& strLeft, string& strRight)
 		strRight = "";
 		return FALSE;
 	}
-	
+
 	strLeft = "";
 	strRight = "";
 	int iPos = (int)strIn.find(strSep);
@@ -150,7 +173,7 @@ BOOL Separate(string strIn, string strSep, string& strLeft, string& strRight)
 	strLeft = strIn.substr(0,iPos);
 	strIn.erase(0, iPos+strSep.length());
 	strRight = strIn;
-	
+
 	return TRUE;
 }
 
@@ -161,7 +184,7 @@ BOOL Separate(wstring strIn, wstring strSep, wstring& strLeft, wstring& strRight
 		strRight = L"";
 		return FALSE;
 	}
-	
+
 	strLeft = L"";
 	strRight = L"";
 	int iPos = (int)strIn.find(strSep);
@@ -176,7 +199,7 @@ BOOL Separate(wstring strIn, wstring strSep, wstring& strLeft, wstring& strRight
 	strLeft = strIn.substr(0,iPos);
 	strIn.erase(0, iPos+strSep.length());
 	strRight = strIn;
-	
+
 	return TRUE;
 }
 
@@ -319,7 +342,7 @@ BOOL UrlDecode(LPCSTR src, DWORD srcSize, string& dest)
 	}
 
 	dest = sjis;
-	
+
 	return TRUE;
 }
 
@@ -362,7 +385,7 @@ BOOL UrlDecode(LPCWSTR src, DWORD srcSize, wstring& dest)
 	MultiByteToWideChar( 932, 0, sjis.c_str(), -1, pwszBuff, iLen );
 
 	dest = pwszBuff;
-	
+
 	delete[] pwszBuff;
 
 	return TRUE;

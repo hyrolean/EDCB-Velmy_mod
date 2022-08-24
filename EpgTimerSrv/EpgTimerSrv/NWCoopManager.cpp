@@ -665,8 +665,9 @@ BOOL CNWCoopManager::UpdateLastEpgFileTime(LONGLONG updateDelay, CSendCtrlCmd *s
 				DWORD dataSize = 0;
 				DWORD err = sendCtrl->SendGetEpgFile2(chkingList[i], &data, &dataSize);
 				if( err == CMD_SUCCESS ){
-					auto tempFilePath = filePath + L".nw.tmp";
-					auto bkFilePath = filePath + L".nw.bk";
+					wstring uuidStr; UuidString(uuidStr);
+					auto tempFilePath = filePath + L"." + uuidStr +L".tmp";
+					auto bkFilePath = filePath + L"." + uuidStr + L".bk";
 					file = _CreateFile2(tempFilePath.c_str(), GENERIC_WRITE, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
 					if( file != INVALID_HANDLE_VALUE){
 						DWORD writeSize = 0;

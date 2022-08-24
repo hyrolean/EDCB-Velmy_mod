@@ -644,9 +644,10 @@ BOOL CTSOut::StartSaveEPG(
 		UnLock();
 		return FALSE;
 	}
+	wstring uuidStr; UuidString(uuidStr);
 	this->epgFilePath = epgFilePath;
 	this->epgTempFilePath = epgFilePath;
-	this->epgTempFilePath += L".tmp";
+	this->epgTempFilePath += L"." + uuidStr + L".tmp";
 
 	_OutputDebugString(L"★%s\r\n", this->epgFilePath.c_str());
 	_OutputDebugString(L"★%s\r\n", this->epgTempFilePath.c_str());
@@ -680,8 +681,9 @@ BOOL CTSOut::StopSaveEPG(
 	this->epgFile = NULL;
 
 	if( copy == TRUE ){
+		wstring uuidStr; UuidString(uuidStr);
+		auto bkFilePath = this->epgFilePath + L"." + uuidStr + L".bk";
 		// NOTE: ファイルの差替処理は、一瞬で完了させる
-		auto bkFilePath = this->epgFilePath + L".bk";
 		const DWORD nTry = 15;
 		TryMoveFile(this->epgFilePath.c_str(),bkFilePath.c_str(),nTry);
 		if(!TryMoveFile(this->epgTempFilePath.c_str(), this->epgFilePath.c_str(),nTry))

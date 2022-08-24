@@ -3,6 +3,10 @@
 
 #include "Util.h"
 
+void UuidString(string& strOut);
+
+void UuidString(wstring& strOut);
+
 void Format(string& strBuff, const char *format, ...);
 
 void Format(wstring& strBuff, const WCHAR *format, ...);
