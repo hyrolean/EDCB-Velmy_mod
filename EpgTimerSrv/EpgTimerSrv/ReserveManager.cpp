@@ -573,6 +573,7 @@ void CReserveManager::ReloadSetting()
 		GetSrvCoopEpgList(&fileList);
 		this->nwCoopManager.SetChkEpgFile(&fileList);
 	}
+	this->epgUpdMarginCoop = GetPrivateProfileInt(L"SET", L"EpgUpdateMarginCoop", 0, iniAppPath.c_str())*60LL*I64_1SEC;
 
 	this->errEndBatRun = GetPrivateProfileInt(L"SET", L"ErrEndBatRun", 0, iniAppPath.c_str());
 
@@ -2472,7 +2473,7 @@ UINT WINAPI CReserveManager::BankCheckThread(LPVOID param)
 					}else{
 						if( sys->_IsEpgCap() == FALSE ){
 							//EPGの取得していなければサーバー連携EPGチェックをする
-							sys->nwCoopManager.StartChkEpgFile(sys->useSrvCoop && sys->useEpgSrvCoop);
+							sys->nwCoopManager.StartChkEpgFile(sys->useSrvCoop && sys->useEpgSrvCoop, sys->epgUpdMarginCoop);
 						}
 					}
 				}
@@ -2549,7 +2550,7 @@ UINT WINAPI CReserveManager::BankCheckThread(LPVOID param)
 				//EPGの取得予定なし
 				if( /*sys->useSrvCoop == TRUE*/ true){
 					//サーバー連携EPGチェックをする
-					sys->nwCoopManager.StartChkEpgFile(sys->useSrvCoop && sys->useEpgSrvCoop);
+					sys->nwCoopManager.StartChkEpgFile(sys->useSrvCoop && sys->useEpgSrvCoop, sys->epgUpdMarginCoop);
 				}
 			}
 			sys->UnLock();

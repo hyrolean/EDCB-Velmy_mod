@@ -279,7 +279,7 @@ namespace EpgTimer.Setting
             {
                 System.IO.Directory.CreateDirectory(textBox_setPath.Text);
                 if(textBox_setEpgPath.Text.Trim()!="")
-                  System.IO.Directory.CreateDirectory(textBox_setEpgPath.Text.Trim());
+                    System.IO.Directory.CreateDirectory(textBox_setEpgPath.Text.Trim());
 
                 IniFileHandler.WritePrivateProfileString("SET", "DataSavePath", textBox_setPath.Text, SettingPath.CommonIniPath);
                 IniFileHandler.WritePrivateProfileString("SET", "DataSavePath_EPG", textBox_setEpgPath.Text.Trim(), SettingPath.CommonIniPath);

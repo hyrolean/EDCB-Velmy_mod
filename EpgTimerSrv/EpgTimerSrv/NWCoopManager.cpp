@@ -23,6 +23,7 @@ CNWCoopManager::CNWCoopManager(void)
 	WSAStartup(MAKEWORD(2,0), &wsaData);
 
 	lastEpgFileTime = 0LL ;
+	updMargin = 60*60*I64_1SEC ;
 }
 
 CNWCoopManager::~CNWCoopManager(void)
@@ -506,7 +507,7 @@ BOOL CNWCoopManager::SetChkEpgFile(vector<wstring>* chkFileList)
 	return ret;
 }
 
-void CNWCoopManager::StartChkEpgFile(bool checkServerEpg)
+void CNWCoopManager::StartChkEpgFile(bool checkServerEpg, LONGLONG updateMargin)
 {
 	if( Lock(L"CNWCoopManager::StartChkEpgFile") == FALSE ) return ;
 
@@ -519,6 +520,7 @@ void CNWCoopManager::StartChkEpgFile(bool checkServerEpg)
 	}
 
 	this->chkEpgSrv = checkServerEpg ;
+	this->updMargin = updateMargin ;
 	if(this->lastEpgFileTime==0LL)
 		this->UpdateLastEpgFileTime();
 
@@ -562,7 +564,7 @@ BOOL CNWCoopManager::IsUpdateEpgData()
 	return ret;
 }
 
-BOOL CNWCoopManager::UpdateLastEpgFileTime(LONGLONG updateDelay, CSendCtrlCmd *sendCtrl, bool *stopped)
+BOOL CNWCoopManager::UpdateLastEpgFileTime(LONGLONG updateMargin, CSendCtrlCmd *sendCtrl, bool *stopped)
 {
 	if( QueueLock() == FALSE ) {
 		//Epg更新日時を現時刻に設定
@@ -612,7 +614,7 @@ BOOL CNWCoopManager::UpdateLastEpgFileTime(LONGLONG updateDelay, CSendCtrlCmd *s
 			CloseHandle(file);
 
 				// MARK : クライアントファイルのEPG最新日付チェック
-				if(lastEpgFileTime+updateDelay<fileTime) {
+				if(lastEpgFileTime+updateMargin<fileTime) {
 					lastEpgFileTime = fileTime ;
 					chgFile = TRUE;
 				}
@@ -656,7 +658,7 @@ BOOL CNWCoopManager::UpdateLastEpgFileTime(LONGLONG updateDelay, CSendCtrlCmd *s
 					}
 				}
 			}
-			if( maxTime > 0 && maxTime > (fileTime + updateDelay)){
+			if( maxTime > 0 && maxTime > (fileTime + updateMargin)){
 				//1時間以上新しいファイルなので取得する
 				sendCtrl->SetNWSetting(srvIP, srvPort);
 				sendCtrl->SetConnectTimeOut(15*1000);
@@ -716,7 +718,7 @@ BOOL CNWCoopManager::UpdateLastEpgFileTime(LONGLONG updateDelay, CSendCtrlCmd *s
 			else
 				localFileTime = fileTime ;
 
-			if(fileTime > localFileTime+updateDelay) {
+			if(fileTime > localFileTime+updateMargin) {
 				_CreateDirectory(localFolderPath.c_str());
 				CopyFile(filePath.c_str(),localFilePath.c_str(),existFail);
 			}
@@ -738,7 +740,7 @@ UINT WINAPI CNWCoopManager::ChkEpgThread(LPVOID param)
 		if( ::WaitForSingleObject(sys->chkEpgStopEvent, wait) != WAIT_TIMEOUT ){
 			//キャンセルされた
 			stopped=true;
-		}else if(sys->UpdateLastEpgFileTime(60*60*I64_1SEC,sys->chkEpgSrv?&sendCtrl:NULL,&stopped)){
+		}else if(sys->UpdateLastEpgFileTime(sys->updMargin,sys->chkEpgSrv?&sendCtrl:NULL,&stopped)){
 			sys->updateEpgData = TRUE;
 		}
 		wait = 10*60*1000;

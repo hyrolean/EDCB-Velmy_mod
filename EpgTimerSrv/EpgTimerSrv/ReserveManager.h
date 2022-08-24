@@ -107,7 +107,7 @@ public:
 
 	//予約の振り分けを行う
 	void ReloadBankMap(BOOL notify);
-	
+
 	//録画済み情報一覧を取得する
 	//戻り値：
 	// TRUE（成功）、FALSE（失敗）
@@ -343,6 +343,7 @@ protected:
 	BOOL useSrvCoop;
 	BOOL useResSrvCoop;
 	BOOL useEpgSrvCoop;
+	LONGLONG epgUpdMarginCoop;
 
 	BOOL ngAddResSrvCoop;
 

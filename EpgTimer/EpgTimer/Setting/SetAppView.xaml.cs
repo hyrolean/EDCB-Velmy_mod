@@ -232,6 +232,9 @@ namespace EpgTimer.Setting
                 {
                     checkBox_useEpgSrvCoop.IsChecked = true;
                 }
+
+                textBox_epgUpdateMarginCoop.Text = IniFileHandler.GetPrivateProfileInt("SET", "EpgUpdateMarginCoop", 60, SettingPath.TimerSrvIniPath).ToString();
+
                 if (IniFileHandler.GetPrivateProfileInt("SET", "NgAddResSrvCoop", 0, SettingPath.TimerSrvIniPath) == 1)
                 {
                     checkBox_ngResCoop.IsChecked = true;
@@ -667,6 +670,10 @@ namespace EpgTimer.Setting
             {
                 IniFileHandler.WritePrivateProfileString("SET", "UseEpgSrvCoop", "0", SettingPath.TimerSrvIniPath);
             }
+
+            IniFileHandler.WritePrivateProfileString("SET", "EpgUpdateMarginCoop", textBox_epgUpdateMarginCoop.Text.ToString(), SettingPath.TimerSrvIniPath);
+
+
             if (checkBox_ngResCoop.IsChecked == true)
             {
                 IniFileHandler.WritePrivateProfileString("SET", "NgAddResSrvCoop", "1", SettingPath.TimerSrvIniPath);
@@ -1186,7 +1193,7 @@ namespace EpgTimer.Setting
                 }
             }
         }
-        
+
         private void button_inst_Click(object sender, RoutedEventArgs e)
         {
             String exePath = SettingPath.ModulePath + "\\EpgTimerSrv.exe";
