@@ -354,7 +354,19 @@ BOOL CWriteMain::WriterWriteOnePacket()
 	if(index<0) return FALSE;
 
 	DWORD wsz=0;
-	if( WriteFile(file, packet->data(), (DWORD)packet->wrote(), &wsz, NULL) == FALSE ){
+
+	BYTE *data = (BYTE*) packet->data() ;
+	DWORD len = (DWORD) packet->wrote() ;
+	BOOL bWrite = FALSE ;
+
+          while(len>0) {
+            DWORD wSize = 0 ;
+            bWrite = WriteFile(file, data, len, &wSize, 0) ;
+            if(!bWrite) break ;
+            else data += wSize , len -= wSize , wsz += wSize ;
+          }
+
+	if( bWrite == FALSE ){
 		//ÉGÉâÅ[
 		DWORD err = GetLastError();
 		wstring errMsg = L"";
