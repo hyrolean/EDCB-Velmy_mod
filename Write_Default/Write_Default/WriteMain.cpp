@@ -40,6 +40,7 @@ CWriteMain::CWriteMain(void)
 	writerPriority = GetPrivateProfileIntW(L"SET", L"Priority", 0, iniPath.c_str() ) ;
 	doFlush = GetPrivateProfileIntW(L"SET", L"Flush", 0, iniPath.c_str() ) ? TRUE : FALSE ;
 	doShrink = GetPrivateProfileIntW(L"SET", L"Shrink", 0, iniPath.c_str() ) ? TRUE : FALSE ;
+	doLazyOpen = GetPrivateProfileIntW(L"SET", L"LazyOepn", 0, iniPath.c_str() ) ? TRUE : FALSE ;
 
 	numAlloc=2;
 	for(int i=0;i<numAlloc;i++) { // 初期パケット登録 ( ダブルバッファリング )
@@ -72,51 +73,40 @@ CWriteMain::~CWriteMain(void)
 	DeleteCriticalSection(&critical);
 }
 
-//ファイル保存を開始する
-//戻り値：
-// TRUE（成功）、FALSE（失敗）
-//引数：
-// fileName             [IN]保存ファイルフルパス（必要に応じて拡張子変えたりなど行う）
-// overWriteFlag        [IN]同一ファイル名存在時に上書きするかどうか（TRUE：する、FALSE：しない）
-// createSize           [IN]入力予想容量（188バイトTSでの容量。即時録画時など総時間未定の場合は0。延長などの可能性もあるので目安程度）
-BOOL CWriteMain::_StartSave(
-	LPCWSTR fileName,
-	BOOL overWriteFlag,
-	ULONGLONG createSize
-	)
-{
-	//savePath = L"";
 
+BOOL CWriteMain::OpenFile()
+{
 	wstring errMsg = L"";
 	DWORD err = 0;
 
-	wstring recFilePath = fileName;
-	if( overWriteFlag == TRUE ){
+	wstring recFilePath = openParams.fileName;
+	HANDLE newFile = NULL ;
+	if( openParams.overWriteFlag ){
 		_OutputDebugString(L"★_StartSave CreateFile:%s\n", recFilePath.c_str());
-		file = _CreateFile2( recFilePath.c_str(), GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
-		if( file == INVALID_HANDLE_VALUE ){
+		newFile = _CreateFile2( recFilePath.c_str(), GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
+		if( newFile == INVALID_HANDLE_VALUE ){
 			err = GetLastError();
 			GetLastErrMsg(err, errMsg);
 			_OutputDebugString(L"★_StartSave Err:0x%08X %s\n", err, errMsg.c_str());
-			if( GetNextFileName(fileName, recFilePath) == TRUE ){
+			if( GetNextFileName(openParams.fileName, recFilePath) ){
 				_OutputDebugString(L"★_StartSave CreateFile:%s\n", recFilePath.c_str());
-				file = _CreateFile2( recFilePath.c_str(), GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
+				newFile = _CreateFile2( recFilePath.c_str(), GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
 			}
 		}
 	}else{
 		_OutputDebugString(L"★_StartSave CreateFile:%s\n", recFilePath.c_str());
-		file = _CreateFile2( recFilePath.c_str(), GENERIC_WRITE, FILE_SHARE_READ, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL );
-		if( file == INVALID_HANDLE_VALUE ){
+		newFile = _CreateFile2( recFilePath.c_str(), GENERIC_WRITE, FILE_SHARE_READ, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL );
+		if( newFile == INVALID_HANDLE_VALUE ){
 			err = GetLastError();
 			GetLastErrMsg(err, errMsg);
 			_OutputDebugString(L"★_StartSave Err:0x%08X %s\n", err, errMsg.c_str());
-			if( GetNextFileName(fileName, recFilePath) == TRUE ){
+			if( GetNextFileName(openParams.fileName, recFilePath) ){
 				_OutputDebugString(L"★_StartSave CreateFile:%s\n", recFilePath.c_str());
-				file = _CreateFile2( recFilePath.c_str(), GENERIC_WRITE, FILE_SHARE_READ, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL );
+				newFile = _CreateFile2( recFilePath.c_str(), GENERIC_WRITE, FILE_SHARE_READ, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL );
 			}
 		}
 	}
-	if( file == INVALID_HANDLE_VALUE ){
+	if( newFile == INVALID_HANDLE_VALUE ){
 		err = GetLastError();
 		GetLastErrMsg(err, errMsg);
 		_OutputDebugString(L"★_StartSave Err:0x%08X %s\n", err, errMsg.c_str());
@@ -143,14 +133,52 @@ BOOL CWriteMain::_StartSave(
 				fclose(erst);
 			}
 		}
-		if(!createSize && reserveSize>=writerWritten)
-			createSize = reserveSize - writerWritten;
+		if(!openParams.createSize && reserveSize>=writerWritten)
+			openParams.createSize = reserveSize - writerWritten;
 	}
 
 	writerWritten = 0 ;
 	savePath = recFilePath;
-	reserveSize = createSize;
+	reserveSize = openParams.createSize;
 	writerFailed = FALSE;
+
+	file = newFile;
+	return TRUE ;
+}
+
+
+//ファイル保存を開始する
+//戻り値：
+// TRUE（成功）、FALSE（失敗）
+//引数：
+// fileName             [IN]保存ファイルフルパス（必要に応じて拡張子変えたりなど行う）
+// overWriteFlag        [IN]同一ファイル名存在時に上書きするかどうか（TRUE：する、FALSE：しない）
+// createSize           [IN]入力予想容量（188バイトTSでの容量。即時録画時など総時間未定の場合は0。延長などの可能性もあるので目安程度）
+BOOL CWriteMain::_StartSave(
+	LPCWSTR fileName,
+	BOOL overWriteFlag,
+	ULONGLONG createSize
+	)
+{
+	//savePath = L"";
+
+	openParams.fileName = fileName ;
+	openParams.overWriteFlag = overWriteFlag ;
+	openParams.createSize = createSize ;
+
+	BOOL result = TRUE ;
+
+	if(!doLazyOpen) result = OpenFile();
+	else if(!overWriteFlag) {
+		if(PathFileExists(fileName)) {
+			std::wstring nextFileName = L"";
+			if( GetNextFileName(fileName, nextFileName) ){
+				openParams.fileName = nextFileName ;
+			}
+		}
+	}
+
+	if(!result) return FALSE ;
 
 	writerThread = (HANDLE)_beginthreadex(NULL, 0, WriterThreadProc, this, CREATE_SUSPENDED, NULL) ;
 	if(writerThread != INVALID_HANDLE_VALUE) {
@@ -232,21 +260,22 @@ BOOL CWriteMain::_GetSaveFilePath(
 	DWORD* filePathSize
 	)
 {
+	std::wstring path = file==NULL ? openParams.fileName : savePath ;
 	if( filePath == NULL ){
 		if( filePathSize == NULL ){
 			return FALSE;
 		}else{
-			*filePathSize = (DWORD)savePath.size()+1;
+			*filePathSize = (DWORD)path.size()+1;
 		}
 	}else{
 		if( filePathSize == NULL ){
 			return FALSE;
 		}else{
-			if( *filePathSize < (DWORD)savePath.size()+1 ){
-				*filePathSize = (DWORD)savePath.size()+1;
+			if( *filePathSize < (DWORD)path.size()+1 ){
+				*filePathSize = (DWORD)path.size()+1;
 				return FALSE;
 			}else{
-				wcscpy_s(filePath, *filePathSize, savePath.c_str());
+				wcscpy_s(filePath, *filePathSize, path.c_str());
 			}
 		}
 	}
@@ -390,8 +419,8 @@ BOOL CWriteMain::WriterWriteOnePacket()
 		bool beShrunk=false;
 		if(doShrink) {
 			//バッファ容量に余裕があれば領域を開放する
-			size_t numBorder = max(2,queueIndices.size()) ;
-			beShrunk = numAlloc>=numBorder;
+			auto numBorder = max(2,queueIndices.size()) ;
+			beShrunk = numAlloc>=static_cast<decltype(numAlloc)>(numBorder);
 		}
 		//パケットを未使用に
 		if(beShrunk) {
@@ -416,6 +445,15 @@ BOOL CWriteMain::WriterWriteOnePacket()
 
 unsigned int CWriteMain::WriterThreadProcMain ()
 {
+	//ファイルの遅延オープン処理
+	if(doLazyOpen) {
+		if(!OpenFile()) {
+			writerFailed = true ;
+			writerTerminated = true ;
+			return 1 ;
+		}
+	}
+
 	//ディスクに容量を確保
 	if( doReserve && reserveSize > 0 ){
 		LARGE_INTEGER stPos;
@@ -601,14 +639,21 @@ void CWriteMain::FileRescueTool(HWND hWnd)
 		return ;
 	}
 
-	vector<wstring> errFiles;
+	deque<wstring> errFiles;
+	wstring dir = L"";
 	bool nl=true;
 	for(int len=0;len<MAX_RESULTS-1;len++) {
-		if(nl) { errFiles.push_back(&strErrFiles[len]); nl=false; }
+		if(nl) { if(dir==L"") dir = &strErrFiles[len]; errFiles.push_back(&strErrFiles[len]); nl=false; }
 		if(!strErrFiles[len]) {
 			if(!strErrFiles[len+1]) break ;
 			nl=true;
 		}
+	}
+	if(errFiles.size()>=2) {
+		dir+=L"\\";
+		errFiles.pop_front();
+	}else {
+		dir=L"";
 	}
 
 	WCHAR strOutPath[MAX_PATH]=L"";
@@ -640,13 +685,14 @@ void CWriteMain::FileRescueTool(HWND hWnd)
 	}
 
 	for(auto errFile : errFiles) {
-		if(!PathFileExists(errFile.c_str())) {
+		wstring errFullpath = dir + errFile ;
+		if(!PathFileExists(errFullpath.c_str())) {
 			wstring mess ;
-			Format(mess, L"エラーログ \"%s\" は、存在しません。", errFile.c_str());
+			Format(mess, L"エラーログ \"%s\" は、存在しません。", errFullpath.c_str());
 			MessageBox(hWnd, mess.c_str(), L"録画ファイルレスキュー", MB_ICONSTOP|MB_OK);
 			return ;
 		}
-		if(!CWriteMain().FileRescueToolMain(hWnd, batFile, strOutPath, errFile.c_str()))
+		if(!CWriteMain().FileRescueToolMain(hWnd, batFile, strOutPath, errFullpath.c_str()))
 			return ;
 	}
 
