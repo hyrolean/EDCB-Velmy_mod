@@ -134,6 +134,14 @@ protected:
 	int writerPriority;
 	BOOL doFlush;
 	BOOL doShrink;
+	BOOL doLazyOpen;
+
+	struct {
+		std::wstring fileName ;
+		BOOL overWriteFlag ;
+		ULONGLONG createSize ;
+	} openParams ;
+	BOOL OpenFile();
 
 	size_t bufferSize;
 	size_t maxPackets;
