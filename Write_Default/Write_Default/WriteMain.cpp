@@ -40,7 +40,7 @@ CWriteMain::CWriteMain(void)
 	writerPriority = GetPrivateProfileIntW(L"SET", L"Priority", 0, iniPath.c_str() ) ;
 	doFlush = GetPrivateProfileIntW(L"SET", L"Flush", 0, iniPath.c_str() ) ? TRUE : FALSE ;
 	doShrink = GetPrivateProfileIntW(L"SET", L"Shrink", 0, iniPath.c_str() ) ? TRUE : FALSE ;
-	doLazyOpen = GetPrivateProfileIntW(L"SET", L"LazyOepn", 0, iniPath.c_str() ) ? TRUE : FALSE ;
+	doLazyOpen = GetPrivateProfileIntW(L"SET", L"LazyOpen", 0, iniPath.c_str() ) ? TRUE : FALSE ;
 
 	numAlloc=2;
 	for(int i=0;i<numAlloc;i++) { // 初期パケット登録 ( ダブルバッファリング )
@@ -643,17 +643,15 @@ void CWriteMain::FileRescueTool(HWND hWnd)
 	wstring dir = L"";
 	bool nl=true;
 	for(int len=0;len<MAX_RESULTS-1;len++) {
-		if(nl) { if(dir==L"") dir = &strErrFiles[len]; errFiles.push_back(&strErrFiles[len]); nl=false; }
+		if(nl) { errFiles.push_back(&strErrFiles[len]); nl=false; }
 		if(!strErrFiles[len]) {
 			if(!strErrFiles[len+1]) break ;
 			nl=true;
 		}
 	}
 	if(errFiles.size()>=2) {
-		dir+=L"\\";
+		dir=errFiles.front()+L"\\";
 		errFiles.pop_front();
-	}else {
-		dir=L"";
 	}
 
 	WCHAR strOutPath[MAX_PATH]=L"";
